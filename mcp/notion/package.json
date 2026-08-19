@@ -1,0 +1,12 @@
+{
+  "name": "notion",
+  "version": "1.0.0",
+  "description": "Notion MCP Server for navi",
+  "main": "index.js",
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "smol-toml": "^1.6.1"
+  }
+}
