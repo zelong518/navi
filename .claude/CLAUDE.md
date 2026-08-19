@@ -20,6 +20,7 @@
 | `/navi sync\|pull\|status` | 把 `~/.navi`（config + cache）镜像备份到 WebDAV，换机可恢复 |
 | `/hiboard` | 把任务结果推送到华为/荣耀手机「负一屏」（HiBoard 服务动态）|
 | `/feishu 「内容」` | 把内容推送到飞书群自定义机器人（webhook，KEY 可传参或配置）|
+| `/snapshot save\|list\|restore` | 把本地 Claude Code / Codex 的工作状态（配置+会话+凭证+插件）快照到持久目录，重启后一条命令恢复 |
 | `/dlc list\|logs\|workspaces` | 查阿里云 PAI-DLC 训练任务（跨工作空间列 Running + 卡数/时长/属主，取节点日志）|
 
 ## Paper — Zotero 论文库语义问答
@@ -97,6 +98,41 @@ python3 .claude/skills/paper/paper.py status           # 查看 cache / 索引
 只描述「单个指标是什么」（含义/期望趋势/健康范围/异常信号）；**指标之间的关系由 workflow 自动从数据挖掘**，无需手写，文末可选填强耦合先验。
 
 依赖：`pip install -U swanlab`（需 >=0.8.0，提供 `swanlab.Api`）。
+
+## Snapshot — Claude Code / Codex 状态快照
+
+开发机的 home 常常不是持久存储，重启后 `~/.claude` 与 `~/.codex` 被清空——登录态、
+会话记录、装好的插件全没了，而 `/volume` 这类挂载是持久的。本 skill 把两个工具的
+**完整工作状态**存到持久目录，重启后一条 `restore` 复活。
+
+设计原则：**白名单 + 可验证**——只收明确列出的配置/会话/凭证/插件项（纯运行时缓存
+如 `cache/`、`ide/` 不收），manifest 记录每文件 md5，`restore` 先校验再写回，
+被覆盖的原文件自动备份到 `~/.navi-pre-restore-<时间戳>/`。纯 stdlib，无依赖。
+
+```bash
+python3 .claude/skills/snapshot/snapshot.py save --tag 重启前   # 存快照
+python3 .claude/skills/snapshot/snapshot.py list               # 列快照
+python3 .claude/skills/snapshot/snapshot.py restore <快照> --dry-run  # 先看会动什么
+python3 .claude/skills/snapshot/snapshot.py restore <快照>      # 真恢复
+```
+
+默认**全量**（配置 + 会话 + 凭证 + 插件），瘦身用 `--no-history` / `--no-credentials` /
+`--no-plugins`；`--archive` 打成单个 tar.gz，`--keep N` 只留最近 N 份，
+`--project DIR` 额外收项目级 `.claude`/`.codex`/`.agents`。
+
+文件结构：
+- `.claude/skills/snapshot/SKILL.md` — 编排说明
+- `.claude/skills/snapshot/snapshot.py` — CLI 入口（save / list / restore）
+
+配置：`$NAVI_HOME/config.toml` 的 `[snapshot]` 段，`dest`（快照目录，**必须在持久存储上**）
+与 `keep`（保留份数）。**快照含明文凭证**，所以快照目录设 `700`、凭证副本设 `600`，
+且 `snapshots/` 已排除在 `navi sync` 之外，不会被上传 WebDAV。恢复后需重启 Claude Code。
+
+挂 cron 每小时一份、留最近 24 份，重启最多丢 1 小时：
+
+```cron
+0 * * * * cd /path/to/navi && NAVI_HOME=/your/config python3 .claude/skills/snapshot/snapshot.py save --keep 24 >> /tmp/navi-snapshot.log 2>&1
+```
 
 ## Navi 配置/缓存 WebDAV 备份
 
