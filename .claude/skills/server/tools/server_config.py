@@ -16,7 +16,7 @@ TOML 结构：
     # password = "xxx"             # auth=password 时（明文存储）
 
 子命令：
-    add    --name --host --auth {key,password} [--user --port --key-path --password]
+    add    --name --host --auth {key,password} [--user --port --key-path --password --note]
     list
     remove --name
 输出：单行 JSON（密码字段以 "***" 脱敏）。
@@ -84,6 +84,8 @@ def cmd_add(args):
         die("auth 只能是 key 或 password。")
 
     lines = [f"[servers.{args.name}]"]
+    if args.note:
+        lines.append(f"note     = {toml_str(args.note)}")
     lines.append(f"host     = {toml_str(args.host)}")
     lines.append(f"port     = {int(args.port)}")
     lines.append(f"user     = {toml_str(args.user)}")
@@ -164,6 +166,7 @@ def parse_args():
     a.add_argument("--port", default=22, type=int)
     a.add_argument("--key-path", dest="key_path")
     a.add_argument("--password")
+    a.add_argument("--note", help="备注：GPU 型号/容量、内网 IP、已知坑等")
     a.set_defaults(func=cmd_add)
 
     sub.add_parser("list", help="列出所有服务器（密码脱敏）").set_defaults(func=cmd_list)
