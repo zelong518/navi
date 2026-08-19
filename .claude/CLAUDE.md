@@ -6,10 +6,10 @@
 
 | 命令 | 说明 |
 |------|------|
-| `/navi-arxiv` | 筛选今日 arxiv 上 LLM 基模、训练系统和大模型安全相关论文 |
+| `/navi-arxiv` | 按你的关注方向筛今日 arxiv（默认五类：基模 / 训练系统 / 推理系统 / 可靠性与故障观测 / 安全；方向定义在 `$NAVI_HOME/arxiv-directions.md`）|
 | `/navi-paper sync\|ask\|status` | Zotero 论文库同步 + PaperQA2 语义问答（带引用）|
 | `/navi-github [language]` | GitHub 每日热门仓库，支持按语言筛选 |
-| `/navi-zhihu` | 知乎当前热榜话题 |
+| `/navi-zhihu hot\|topic\|all` | 知乎热榜，或按话题抓相关内容（话题清单在 `$NAVI_HOME/zhihu-topics.md`）|
 | `/navi-hfpapers` | Hugging Face Daily Papers 今日热门论文 |
 | `/navi-hackernews` | Hacker News 当前热门帖子 |
 | `/navi-producthunt` | Product Hunt 今日热门产品 |
@@ -101,6 +101,27 @@ python3 .claude/skills/navi-paper/paper.py status           # 查看 cache / 索
 只描述「单个指标是什么」（含义/期望趋势/健康范围/异常信号）；**指标之间的关系由 workflow 自动从数据挖掘**，无需手写，文末可选填强耦合先验。
 
 依赖：`pip install -U swanlab`（需 >=0.8.0，提供 `swanlab.Api`）。
+
+## 信息源的「关注点外置」
+
+`navi-arxiv` 与 `navi-zhihu` 的**关注点不写在 skill 里**，而是放在 `$NAVI_HOME` 下的
+用户维护文件，仓库只给 `.example.md` 模板——沿用 `swanlab-metrics.md` 的既有模式。
+加删方向 / 话题不用改 skill，也不会把个人关注点提交进仓库。
+
+| 文件 | 作用 | 模板 |
+|------|------|------|
+| `$NAVI_HOME/arxiv-directions.md` | arxiv 五个筛选方向的收/不收/边界与兜底类 | `navi-arxiv/arxiv-directions.example.md` |
+| `$NAVI_HOME/zhihu-topics.md` | 知乎常关注话题清单（一行一个查询） | `navi-zhihu/zhihu-topics.example.md` |
+
+**arxiv 抓取分类**另由 `[arxiv].categories` 配置（列表或 `+` 连接的字符串），
+默认已含 `cs.SE` / `cs.PF` / `cs.AR`——为「推理系统」和「可靠性与故障观测」两个方向补的，
+实测只多约 30 条（597 → 627），交叉挂靠重叠大，代价可忽略。
+
+**知乎话题为什么走 WebSearch**：知乎官方搜索与话题接口都要登录（实测
+`search_v3` → `40353 need_login`，`topics/<id>/feeds` → `10003` 要客户端签名），
+只有 `/topstory/hot-list` 可无鉴权访问。所以 `topic` 子命令用
+`WebSearch(allowed_domains=["zhihu.com"])`，命中的多是专栏文章，
+**是搜索引擎索引结果、不是实时热度排序**，输出时必须讲清这点。
 
 ## Polymarket — 资产 / 持仓 / 策略
 

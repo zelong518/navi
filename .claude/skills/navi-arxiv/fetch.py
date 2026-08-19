@@ -7,16 +7,38 @@ RSS 全量返回（当日常有数百条），WebFetch 会截断到前 ~50 条�
 
 import argparse
 import json
+import os
+import pathlib
 import sys
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 
-RSS_URL = "https://rss.arxiv.org/rss/cs.AI+cs.CL+cs.LG+cs.CE+cs.DB+cs.DC+cs.MA+cs.OS+cs.SY"
+# 分类：可用 $NAVI_HOME/config.toml 的 [arxiv].categories 覆盖（列表或 + 连接的字符串）
+DEFAULT_CATS = ["cs.AI", "cs.CL", "cs.LG", "cs.CE", "cs.DB", "cs.DC", "cs.MA", "cs.OS",
+                "cs.SY", "cs.SE", "cs.PF", "cs.AR"]
+
+
+def _cats():
+    cfg_path = pathlib.Path(os.environ.get("NAVI_HOME") or "~/.navi").expanduser() / "config.toml"
+    cats = None
+    if cfg_path.exists():
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            import tomli as tomllib  # type: ignore
+        with open(cfg_path, "rb") as f:
+            cats = (tomllib.load(f).get("arxiv") or {}).get("categories")
+    if isinstance(cats, str):
+        cats = [c.strip() for c in cats.replace("+", ",").split(",") if c.strip()]
+    return cats or DEFAULT_CATS
+
+
+RSS_URL = "https://rss.arxiv.org/rss/" + "+".join(_cats())
 API_URL = (
     "https://export.arxiv.org/api/query"
-    "?search_query=cat:cs.AI+OR+cat:cs.CL+OR+cat:cs.LG+OR+cat:cs.DC+OR+cat:cs.DB"
-    "&sortBy=submittedDate&sortOrder=descending&max_results={n}"
+    "?search_query=" + "+OR+".join(f"cat:{c}" for c in _cats())
+    + "&sortBy=submittedDate&sortOrder=descending&max_results={n}"
 )
 
 NS = {

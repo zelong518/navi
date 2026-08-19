@@ -1,7 +1,7 @@
 ---
 name: navi-arxiv
-description: 获取今日 arxiv 论文，筛选大语言模型基模、训练系统和大模型安全相关论文
-argument-hint: "[方向…=全选] [条数=全部]"
+description: 获取今日 arxiv 论文并按你的关注方向筛选（默认五类：大语言模型基模 / 训练系统 / 推理系统 / 可靠性与故障观测 / 大模型安全）。方向定义读 $NAVI_HOME/arxiv-directions.md，改方向不用改 skill。
+argument-hint: "[方向…=全选：基模|训练系统|推理系统|可靠性|安全] [条数=全部]"
 ---
 
 # arxiv 今日论文筛选
@@ -12,7 +12,7 @@ argument-hint: "[方向…=全选] [条数=全部]"
 
 | 参数 | 默认 | 说明 |
 |------|------|------|
-| 方向 | 全选 | `基模` / `训练系统` / `安全`，可多给；只输出命中方向 |
+| 方向 | 全选 | `基模` / `训练系统` / `推理系统` / `可靠性` / `安全`，可多给；只输出命中方向 |
 | 条数（纯数字） | 全部 | 每个方向最多输出 N 篇 |
 
 ## 任务
@@ -46,6 +46,10 @@ python3 .agents/skills/navi-arxiv/fetch.py > /tmp/arxiv-today.json
 
 ## arXiv 分类代码
 
+分类可用 `$NAVI_HOME/config.toml` 的 `[arxiv].categories` 覆盖（列表或 `+` 连接的字符串）；
+默认已含 `cs.SE` / `cs.PF` / `cs.AR`（为可靠性与推理系统方向补的，实测只多约 30 条）。
+
+
 | 代码 | 全称 | 说明 |
 |------|------|------|
 | cs.AI | Artificial Intelligence | 人工智能 |
@@ -60,28 +64,14 @@ python3 .agents/skills/navi-arxiv/fetch.py > /tmp/arxiv-today.json
 
 ## 筛选规则
 
-从所有获取到的论文中，筛选与以下主题相关的论文：
+**规则不在本文件里**——读 `$NAVI_HOME/arxiv-directions.md`（不存在则回退同目录
+`arxiv-directions.example.md`）。那份文件定义每个方向收什么、不收什么、边界怎么划，
+以及兜底的「相关系统方向」。**用户改关注点只需要改那一个文件**，不用动 skill。
 
-**大语言模型基模（LLM Foundation Models）**：
-- 关键词：LLM, large language model, foundation model, language modeling, pretraining, pre-training, scaling law, tokenization, architecture (transformer variants), mixture of experts, MoE, long context, multimodal foundation
+默认五个方向：大语言模型基模 / 训练系统 / 推理系统 / 可靠性与故障观测 / 大模型安全。
 
-**训练系统（Training Systems）**：
-- 关键词：training system, distributed training, parallel training, data parallel, model parallel, pipeline parallel, tensor parallel, training infrastructure, training efficiency, GPU cluster, training framework, DeepSpeed, Megatron, FSDP, checkpointing, mixed precision, gradient compression, communication optimization, training at scale
-
-**大模型安全（LLM Safety & Security）**：
-- 关键词：jailbreak, prompt injection, adversarial attack, red teaming, alignment, RLHF, safety alignment, refusal, guardrail, safety filter, model extraction, membership inference, distillation detection, data poisoning, backdoor, watermarking, hallucination, privacy leakage, memorization, unlearning, interpretability for safety, CoT faithfulness, monitorability, deception, agent safety, tool-use safety, sandbox escape
-- 判断依据是**攻击/防御/评测的对象是不是大模型（含 agent）**：针对 LLM/agent 的 → 收；传统软件漏洞、通用密码学、与模型无关的网络安全 → 不收。
-
-筛选时综合考虑标题和摘要内容，不要仅做简单关键词匹配——理解论文的实际主题。注意 alignment / RLHF 类论文只在其**动机是安全性**（无害、拒答、防操纵）时算安全方向；纯粹为提升任务能力的后训练归基模类。
-
-### 主列表 vs 相关系统方向
-
-上面三类命中的论文进**主列表**。此外还有一类**通用训练/系统方向**的论文：
-
-- 涉及 checkpointing / 分布式与并行计算 / 容错（fault tolerance）/ 通信优化 / HPC 系统等系统关键词，
-- 但**并非面向大语言模型训练**（如通用 HPC 数据流容错、给 MPI 程序自动加检查点、抗静默数据损坏的任务复制等）。
-
-这类论文**不要丢弃**，也**不要混入主列表**——单独归到输出的「相关系统方向」小节（见输出格式）。判断依据是「是否服务于大模型训练」：服务于 → 主列表；只是通用系统 → 相关系统方向。
+筛选时**理解论文主题**，不要只做关键词匹配；一篇只进一个方向，按最贴近其主要贡献的那个。
+方向文件里写了同时命中时怎么裁（例如「更快更省」归系统方向、「更可靠更可诊断」归可靠性）。
 
 ## 输出格式
 
