@@ -19,6 +19,8 @@ Navi 的全部斜杠命令。每个命令对应一个子目录，操作说明写
 | `/server add\|list\|remove` | 管理远程服务器清单（名字/IP/登录方式）写入 `~/.navi/config.toml` |
 | `/navi sync\|pull\|status` | 把 `~/.navi`（config + cache）镜像备份到 WebDAV，换机可恢复 |
 | `/snapshot save\|list\|restore` | Claude Code / Codex 工作状态快照到持久目录，重启后恢复 |
+| `/perf-discipline` | 性能测量与排障纪律 |
+| `/devflow` | issue / MR / commit 规范与合并门禁 |
 
 ## 用法示例
 

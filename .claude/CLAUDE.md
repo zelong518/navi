@@ -20,6 +20,8 @@
 | `/navi sync\|pull\|status` | 把 `~/.navi`（config + cache）镜像备份到 WebDAV，换机可恢复 |
 | `/hiboard` | 把任务结果推送到华为/荣耀手机「负一屏」（HiBoard 服务动态）|
 | `/feishu 「内容」` | 把内容推送到飞书群自定义机器人（webhook，KEY 可传参或配置）|
+| `/perf-discipline` | 性能测量与排障纪律（先测上限、交错 A/B、replay-first、证据强弱）|
+| `/devflow` | issue / MR / commit 规范与合并门禁 |
 | `/snapshot save\|list\|restore` | 把本地 Claude Code / Codex 的工作状态（配置+会话+凭证+插件）快照到持久目录，重启后一条命令恢复 |
 | `/dlc list\|logs\|workspaces` | 查阿里云 PAI-DLC 训练任务（跨工作空间列 Running + 卡数/时长/属主，取节点日志）|
 
@@ -98,6 +100,27 @@ python3 .claude/skills/paper/paper.py status           # 查看 cache / 索引
 只描述「单个指标是什么」（含义/期望趋势/健康范围/异常信号）；**指标之间的关系由 workflow 自动从数据挖掘**，无需手写，文末可选填强耦合先验。
 
 依赖：`pip install -U swanlab`（需 >=0.8.0，提供 `swanlab.Api`）。
+
+## 知识型 skill — perf-discipline / devflow
+
+两个**只讲方法、不含环境信息**的 skill，从实战项目里抽出来：
+
+| skill | 内容 |
+|-------|------|
+| `perf-discipline` | 测量纪律（先测硬件上限、单次测量不可信要交错多轮、微基准排名不能外推到端到端、约 6% 中位差不足以行动、A/B 两 arm 冷热必须一致）；排障 replay-first 并按成本递增收缩；证据强弱表（分数是弱证据，**逐字相同**才是强证据）|
+| `devflow` | issue 五段（含用矩阵表呈现单变量对照）、MR 五段（What / Why it broke / Changes / How verified / Risk）、conventional commit、分支命名、合并前门禁（⚠️ 增量构建不会更新已 import 的动态库，不重装就是在测旧代码）|
+
+设计原则：**抽象入仓库，具体留本地**。环境实测常数、机器清单、仓库地址与凭据
+一律放 `$NAVI_HOME`，仓库里只放 `.example.md` 模板：
+
+- `$NAVI_HOME/cluster-facts.md` ← `perf-discipline/cluster-facts.example.md`
+  （存储/总线带宽上限、时间常数、已否掉的方向、环境特有的坑）
+- `$NAVI_HOME/devflow.md` ← `devflow/devflow.example.md`
+  （各仓库 host / 项目 / git 身份 / token scope 要求 / 是否禁止 AI 署名）
+- 机器清单走 `/server`（写进 `$NAVI_HOME/config.toml` 的 `[servers.*]`，
+  `note` 字段记 GPU 型号容量、内网 IP、已知坑）
+
+沿用 `swanlab-metrics.md` 的既有模式：**用户唯一需维护的文件在 `$NAVI_HOME`，仓库只给模板。**
 
 ## Snapshot — Claude Code / Codex 状态快照
 
