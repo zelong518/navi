@@ -76,7 +76,7 @@ Codex 的会话与记忆存在带版本号的 sqlite 里（`state_5.sqlite` 这�
 
 快照**含明文凭证**，所以脚本会把快照目录设 `700`、凭证副本设 `600`。
 放到别人能读的位置时务必加 `--no-credentials`。
-`snapshots/` 已排除在 `navi sync` 之外，不会被上传到 WebDAV。
+`snapshots/` 已排除在 `navi-backup sync` 之外，不会被上传到 WebDAV。
 
 ## 编排要求
 

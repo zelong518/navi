@@ -17,7 +17,7 @@ Navi 的全部斜杠命令。每个命令对应一个子目录，操作说明写
 | `/navi-swanlab-analyze [实验]` | 分析 SwanLab 训练实验，自动挖掘指标关系并诊断 |
 | `/navi-swanlab-monitor [实验]` | 实时监控运行中的训练实验，研判异常并告警（配 `/loop`） |
 | `/navi-server add\|list\|remove` | 管理远程服务器清单（名字/IP/登录方式）写入 `~/.navi/config.toml` |
-| `/navi sync\|pull\|status` | 把 `~/.navi`（config + cache）镜像备份到 WebDAV，换机可恢复 |
+| `/navi-backup sync\|pull\|status` | 把 `~/.navi`（config + cache）镜像备份到 WebDAV，换机可恢复 |
 | `/navi-snapshot save\|list\|restore` | Claude Code / Codex 工作状态快照到持久目录，重启后恢复 |
 | `/navi-polymarket assets\|positions\|market\|strategy\|analyze` | Polymarket 资产/持仓/行情/策略（只读）|
 | `/navi-perf-discipline` | 性能测量与排障纪律 |
@@ -39,7 +39,7 @@ Navi 的全部斜杠命令。每个命令对应一个子目录，操作说明写
 > /navi-swanlab-analyze    # 分析 SwanLab 训练实验，挖掘指标关系
 > /navi-swanlab-monitor    # 实时监控运行中的训练实验（配 /loop）
 > /navi-server add         # 登记一台远程服务器
-> /navi sync          # 把 ~/.navi 备份到 WebDAV
+> /navi-backup sync          # 把 ~/.navi 备份到 WebDAV
 > /navi pull          # 换机时从 WebDAV 恢复 ~/.navi
 ```
 

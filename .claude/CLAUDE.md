@@ -2,10 +2,43 @@
 
 这个仓库包含 Claude Code skills，用于论文追踪、GitHub 热榜和知乎热榜：
 
+## 统一入口与跨仓库使用
+
+`/navi <一句需求>` 是**总入口**：`.claude/skills/navi/SKILL.md` 只有一张**路由表**，
+不含实现——认出意图后用 `Skill` 工具调对应的 `navi-*`，并把原始需求原样传下去。
+命中多个能力时并行调用再合并；认不出意图时列能力清单让用户选，**不猜**。
+
+原先叫 `navi` 的 WebDAV 备份 skill 已改名 **`navi-backup`**，把 `navi` 这个名字腾给入口。
+
+### 装到其他仓库用
+
+两条路，实现是同一份（`plugins/navi/skills` 是指向 `.claude/skills` 的软链，不复制）：
+
+```bash
+# A. 用户级软链（已装好，任何仓库立即可用，git pull 后自动生效）
+mkdir -p ~/.claude/skills
+for d in /path/to/navi/.claude/skills/navi*; do ln -sfn "$d" ~/.claude/skills/; done
+
+# B. 插件（可版本化、可分享）
+/plugin marketplace add <owner>/navi
+/plugin install navi
+```
+
+**跨仓库能跑的两个前提**（都已改好，缺一个就废）：
+
+| 前提 | 为什么 |
+|------|--------|
+| SKILL.md 里脚本路径用**调用时给出的 base directory**（`$S`），不用相对 cwd 的 `.claude/skills/...` | 出了 navi 仓库，cwd 不是仓库根，相对路径全部找不到文件 |
+| `NAVI_HOME` 写在**用户级** `~/.claude/settings.json` 的 `env` | 项目级 settings.json 只在 navi 目录内生效；`bash -c` 也不读 `~/.bashrc` |
+
+实测：在 `vllm-stateelf` 目录下用绝对路径跑 `navi-snapshot` 与 `navi-server` 的脚本，
+都能正常读到 `$NAVI_HOME` 的配置。
+
 ## Skills
 
 | 命令 | 说明 |
 |------|------|
+| **`/navi <一句需求>`** | **统一入口**，把自然语言需求路由到下面的具体能力（认不出意图会列清单让你选）|
 | `/navi-arxiv` | 按你的关注方向筛今日 arxiv（默认五类：基模 / 训练系统 / 推理系统 / 可靠性与故障观测 / 安全；方向定义在 `$NAVI_HOME/arxiv-directions.md`）|
 | `/navi-paper sync\|ask\|status` | Zotero 论文库同步 + PaperQA2 语义问答（带引用）|
 | `/navi-github [language]` | GitHub 每日热门仓库，支持按语言筛选 |
@@ -17,7 +50,7 @@
 | `/navi-swanlab-analyze [实验]` | 分析 SwanLab 训练实验，自动挖掘指标关系并诊断 |
 | `/navi-swanlab-monitor [实验]` | 实时监控运行中的训练实验，研判异常并告警（配 `/loop`） |
 | `/navi-server add\|list\|remove` | 管理远程服务器清单（名字/IP/登录方式）|
-| `/navi sync\|pull\|status` | 把 `~/.navi`（config + cache）镜像备份到 WebDAV，换机可恢复 |
+| `/navi-backup sync\|pull\|status` | 把 `~/.navi`（config + cache）镜像备份到 WebDAV，换机可恢复 |
 | `/navi-hiboard` | 把任务结果推送到华为/荣耀手机「负一屏」（HiBoard 服务动态）|
 | `/navi-feishu 「内容」` | 把内容推送到飞书群自定义机器人（webhook，KEY 可传参或配置）|
 | `/navi-perf-discipline` | 性能测量与排障纪律（先测上限、交错 A/B、replay-first、证据强弱）|
@@ -152,7 +185,7 @@ python3 .claude/skills/navi-polymarket/polymarket.py analyze <策略名>   # 裸
 
 策略是本地 markdown（`$NAVI_HOME/polymarket/strategies/*.md`，含论点/标的/入场/出场/
 仓位风控/复盘六节模板），`strategy add` 同名会覆盖并留 `.md.bak`；**不上传到任何外部服务**，
-想跨机同步走 `/navi sync`。
+想跨机同步走 `/navi-backup sync`。
 
 配置：`[polymarket].address` 必填，`strategies` 可选。
 
@@ -216,7 +249,7 @@ python3 .claude/skills/navi-snapshot/snapshot.py list / prune 10
 
 配置：`$NAVI_HOME/config.toml` 的 `[snapshot]` 段，`dest`（快照目录，**必须在持久存储上**）
 与 `keep`（保留份数）。**快照含明文凭证**，所以快照目录设 `700`、凭证副本设 `600`，
-且 `snapshots/` 已排除在 `navi sync` 之外，不会被上传 WebDAV。恢复后需重启 Claude Code。
+且 `snapshots/` 已排除在 `navi-backup sync` 之外，不会被上传 WebDAV。恢复后需重启 Claude Code。
 
 挂 cron 每小时一份、留最近 24 份，重启最多丢 1 小时：
 
@@ -231,16 +264,16 @@ python3 .claude/skills/navi-snapshot/snapshot.py list / prune 10
 设计原则：**取数自包**（`webdav.py` 纯 stdlib，PROPFIND/PUT/GET/DELETE，跟随 alist 的 302 直链；OSS 后端目录隐式，靠 PUT 隐式建路径）+ **增量**（`~/.navi/.navi-sync.json` 记每文件 md5，未变跳过；日志/锁/`__pycache__` 不传）。
 
 ```bash
-python3 .claude/skills/navi/navi.py sync             # 本地 → WebDAV（增量；--delete 真镜像）
-python3 .claude/skills/navi/navi.py pull             # WebDAV → 本地（换机恢复）
-python3 .claude/skills/navi/navi.py status           # 看本地与远端差异
+python3 .claude/skills/navi-backup/navi.py sync             # 本地 → WebDAV（增量；--delete 真镜像）
+python3 .claude/skills/navi-backup/navi.py pull             # WebDAV → 本地（换机恢复）
+python3 .claude/skills/navi-backup/navi.py status           # 看本地与远端差异
 ```
 
 文件结构：
-- `.claude/skills/navi/navi.py` — CLI 入口（sync / pull / status）
-- `.claude/skills/navi/webdav.py` — 极简 WebDAV 客户端
+- `.claude/skills/navi-backup/navi.py` — CLI 入口（sync / pull / status）
+- `.claude/skills/navi-backup/webdav.py` — 极简 WebDAV 客户端
 
-可挂 cron 每日 `navi sync` 增量备份。`[navi]` 段三项必填：`webdav_url` / `webdav_user` / `webdav_password`。
+可挂 cron 每日 `navi-backup sync` 增量备份。`[navi]` 段三项必填：`webdav_url` / `webdav_user` / `webdav_password`。
 
 ## Hiboard — 负一屏推送
 

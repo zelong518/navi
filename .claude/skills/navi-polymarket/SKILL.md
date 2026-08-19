@@ -64,7 +64,7 @@ python3 $S analyze <策略名>               # 一并带上该策略正文，用
    最后一段取。给了 conditionId（`0x` 开头 66 位）也能查。
 6. 策略是**本地文件**（`$NAVI_HOME/polymarket/strategies/*.md`），
    `strategy add` 只写本地磁盘，**不会上传到 Polymarket 或任何外部服务**。
-   想跨机同步就走 `/navi sync`（WebDAV）。
+   想跨机同步就走 `/navi-backup sync`（WebDAV）。
 7. 涉及金额的输出一律带货币单位与绝对值，不要只给百分比。
 
 ## 配置
