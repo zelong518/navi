@@ -29,7 +29,8 @@ NAVI_ROOT = Path(os.environ.get("NAVI_HOME") or "~/.navi").expanduser()
 CONFIG_PATH = NAVI_ROOT / "config.toml"
 MANIFEST = NAVI_ROOT / ".navi-sync.json"
 # 同步时跳过的本地相对路径模式（manifest 自身、日志、锁、缓存目录）
-EXCLUDE = [".navi-sync.json", "*.log", "*.lock", "__pycache__/*", "*/__pycache__/*"]
+EXCLUDE = [".navi-sync.json", "*.log", "*.lock", "__pycache__/*", "*/__pycache__/*",
+           "snapshots/*"]  # 快照可能含明文凭证且体积大，不上 WebDAV
 
 
 def load_cfg() -> dict:
