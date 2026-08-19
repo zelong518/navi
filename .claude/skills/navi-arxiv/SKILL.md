@@ -9,6 +9,10 @@ context: fork
 
 # arxiv 今日论文筛选
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 参数
 
 `$ARGUMENTS` 可选：
@@ -28,7 +32,7 @@ context: fork
 而当日 feed 常有 500+ 条，会漏掉绝大多数论文。
 
 ```bash
-python3 .claude/skills/navi-arxiv/fetch.py > /tmp/arxiv-today.json
+python3 "$S/fetch.py" > /tmp/arxiv-today.json
 ```
 
 脚本自取 RSS 全量（`rss.arxiv.org`，cs.AI+cs.CL+cs.LG+cs.CE+cs.DB+cs.DC+cs.MA+cs.OS+cs.SY），

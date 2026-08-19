@@ -8,6 +8,10 @@ allowed-tools: AskUserQuestion, Agent, Bash, Write, mcp__siyuan__list_notebooks,
 
 # 每日简报
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 任务
 
 并行调用所选信息源 skill，汇总为一份精简日报。默认全部 6 个，调用前先让用户选择。
@@ -80,7 +84,7 @@ allowed-tools: AskUserQuestion, Agent, Bash, Write, mcp__siyuan__list_notebooks,
 再用 `Bash` 调 `navi-feishu` skill 的 `push.py` 以 markdown 卡片推送：
 
 ```bash
-python3 .claude/skills/navi-feishu/push.py --key <用户现输的KEY> --data /tmp/brief-feishu.json
+python3 "$S/push.py" --key <用户现输的KEY> --data /tmp/brief-feishu.json
 ```
 
 JSON 内容：`{ "title": "每日简报 — {yyyy-mm-dd}", "content": "<第三步的完整简报正文>" }`。

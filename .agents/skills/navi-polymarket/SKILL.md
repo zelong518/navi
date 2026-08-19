@@ -16,7 +16,7 @@ Polymarket 的下单是不可逆的真金白银操作，需要钱包私钥签 EI
 ## 用法
 
 ```bash
-S=.claude/skills/navi-polymarket/polymarket.py
+S="<base directory>/polymarket.py"        # 调用时给出的绝对路径
 
 python3 $S assets                        # 资产总览：估值 / 成本 / 未实现+已实现盈亏 / 可赎回
 python3 $S positions --sort pnl          # 持仓明细（value 市值降序=默认 / pnl / pct / end 到期）

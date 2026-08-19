@@ -15,6 +15,10 @@ allowed-tools: Bash, Read
 - **取数自包**：`webdav.py` 纯 stdlib（PROPFIND/PUT/GET/DELETE，跟随 alist 的 302 直链），不依赖第三方库。
 - **增量**：本地 `~/.navi/.navi-sync.json` 记每个文件的 md5，未变就跳过；日志 / 锁 / `__pycache__` 默认不传。
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 文件
 
 - `navi.py` — CLI 入口（`sync` / `pull` / `status`）
@@ -24,19 +28,19 @@ allowed-tools: Bash, Read
 
 ```bash
 # 上传：本地 ~/.navi → WebDAV（增量）
-python3 .claude/skills/navi/navi.py sync
+python3 "$S/navi.py" sync
 
 # 真镜像：同时删除远端多余文件
-python3 .claude/skills/navi/navi.py sync --delete
+python3 "$S/navi.py" sync --delete
 
 # 预演（不实际传输，只看会动哪些文件）
-python3 .claude/skills/navi/navi.py sync --dry-run
+python3 "$S/navi.py" sync --dry-run
 
 # 换机恢复：WebDAV → 本地 ~/.navi
-python3 .claude/skills/navi/navi.py pull
+python3 "$S/navi.py" pull
 
 # 看本地与远端差异
-python3 .claude/skills/navi/navi.py status
+python3 "$S/navi.py" status
 ```
 
 ## 作为 `/navi` 被调用时

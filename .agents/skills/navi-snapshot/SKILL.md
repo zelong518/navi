@@ -19,10 +19,14 @@ allowed-tools: Bash, Read
 - `/navi-snapshot prune [N]` —— 只留最近 N 份时间戳快照
 - 用户说「快照一下 claude」「重启前存一下」「恢复上次的 claude 状态」等
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 用法
 
 ```bash
-S=.claude/skills/navi-snapshot/snapshot.py
+S="<base directory>/snapshot.py"        # 调用时给出的绝对路径
 
 # upload —— 存快照
 python3 $S upload                    # 存成 snapshot-<时间戳>，并更新 latest
@@ -101,5 +105,5 @@ keep = 10                         # 保留最近 N 份，超出自动删（不�
 挂 cron 每小时存一份、只留最近 24 份，重启后最多丢 1 小时：
 
 ```cron
-0 * * * * cd /path/to/navi && NAVI_HOME=/your/config python3 .claude/skills/navi-snapshot/snapshot.py upload --keep 24 >> /tmp/navi-snapshot.log 2>&1
+0 * * * * cd /path/to/navi && NAVI_HOME=/your/config python3 "$S/snapshot.py" upload --keep 24 >> /tmp/navi-snapshot.log 2>&1
 ```

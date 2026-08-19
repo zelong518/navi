@@ -14,6 +14,10 @@ allowed-tools: Bash, Read, Agent, AskUserQuestion
 - **最小职责**：取数走 `swanlab/tools/` 单一功能脚本；本 skill 一次只跑**一个监控周期**，节奏交给 `/loop`。
 - **裸数据进、研判在上层**：`tools/` 只回原始数据。
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 约定路径
 
 - 工具目录：`.claude/skills/navi-swanlab/tools/`（凭证读 `~/.navi/config.toml` 的 `[swanlab]`）
@@ -33,7 +37,7 @@ allowed-tools: Bash, Read, Agent, AskUserQuestion
 
 1. 取最近窗口的点（无状态，用 `--tail`）：
    ```
-   python3 .claude/skills/navi-swanlab/tools/get_metrics.py --path <path> --keys <核心指标> --tail 50
+   python3 "$S/tools/get_metrics.py" --path <path> --keys <核心指标> --tail 50
    ```
    同时关注实验 `state`（CRASHED/FINISHED 要提示）。
 2. 读指标说明的「期望趋势/异常信号」，对这个小窗口快速研判：NaN/Inf、尖峰、发散（loss/grad-norm 上行）、平台、吞吐掉速。
