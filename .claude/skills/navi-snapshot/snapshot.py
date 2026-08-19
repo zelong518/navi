@@ -266,10 +266,13 @@ def do_save(args, cfg) -> int:
     # 逐文件 md5，供 restore 校验
     files = []
     for p in sorted(work.rglob("*")):
-        if p.is_file():
+        if p.is_symlink():
+            # 软链只记指向，不跟随——指向目录的软链不是 file，早先漏记导致 restore 不会重建它
+            files.append({"path": str(p.relative_to(work)), "symlink": os.readlink(p)})
+        elif p.is_file():
             files.append({"path": str(p.relative_to(work)), "size": p.stat().st_size,
                           "md5": md5_of(p)})
-    total = sum(f["size"] for f in files)
+    total = sum(f.get("size", 0) for f in files)
     manifest["files"] = files
     manifest["totals"] = {"files": len(files), "bytes": total}
     (work / "manifest.json").write_text(
@@ -484,7 +487,8 @@ def do_restore(args, cfg) -> int:
         print("注意：快照不含凭证，恢复后可能需要重新登录（claude / codex）。")
 
     bad = [str(src) for src, _, e in plan
-           if src.exists() and md5_of(src) != e["md5"]]
+           if "symlink" not in e and src.exists() and not src.is_symlink()
+           and md5_of(src) != e["md5"]]
     if bad:
         print(f"⚠️ {len(bad)} 个文件 md5 与 manifest 不符，快照可能损坏：")
         for b in bad[:5]:
@@ -493,23 +497,33 @@ def do_restore(args, cfg) -> int:
             raise SystemExit("已中止。确认无误可加 --force。")
 
     if args.dry_run:
-        for src, dst, _ in plan:
-            mark = "覆盖" if dst.exists() else "新建"
-            print(f"  [{mark}] {dst}")
+        for src, dst, e in plan:
+            mark = "覆盖" if (dst.exists() or dst.is_symlink()) else "新建"
+            kind = f" → {e['symlink']}" if "symlink" in e else ""
+            print(f"  [{mark}] {dst}{kind}")
         print("\n（--dry-run，未做任何改动）")
         return 0
 
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup = HOME / f".navi-pre-restore-{stamp}"
     restored = overwritten = 0
-    for src, dst, _ in plan:
-        if dst.exists():
+    for src, dst, e in plan:
+        if dst.is_symlink() or dst.exists():
             b = backup / dst.relative_to(HOME)
             b.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(dst, b)
+            if dst.is_symlink():
+                b.symlink_to(os.readlink(dst))
+                dst.unlink()
+            else:
+                shutil.copy2(dst, b)
             overwritten += 1
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        if "symlink" in e:
+            if dst.is_symlink() or dst.exists():
+                dst.unlink()
+            os.symlink(e["symlink"], dst)
+        else:
+            shutil.copy2(src, dst)
         restored += 1
 
     if tmp:
