@@ -41,7 +41,9 @@ try:
 except ModuleNotFoundError:  # py<3.11
     import tomli as tomllib  # type: ignore
 
-CONFIG_PATH = Path("~/.navi/config.toml").expanduser()
+# 配置目录：环境变量 NAVI_HOME 优先，未设置则默认 ~/.navi
+NAVI_HOME = Path(os.environ.get("NAVI_HOME") or "~/.navi").expanduser()
+CONFIG_PATH = NAVI_HOME / "config.toml"
 
 
 def load_cfg() -> dict:

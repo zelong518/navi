@@ -26,7 +26,9 @@ except ModuleNotFoundError:  # py<3.11
 
 from paperqa import Settings
 
-CONFIG_PATH = Path("~/.navi/config.toml").expanduser()
+# 配置目录：环境变量 NAVI_HOME 优先，未设置则默认 ~/.navi
+NAVI_HOME = Path(os.environ.get("NAVI_HOME") or "~/.navi").expanduser()
+CONFIG_PATH = NAVI_HOME / "config.toml"
 
 
 def _load_toml():
@@ -43,7 +45,7 @@ def load() -> dict:
     paper = data.get("paper") or {}
     if not paper.get("api_key"):
         raise SystemExit("config.toml 缺少 [paper].api_key（SiliconFlow key）。")
-    cache = Path(os.path.expanduser(paper.get("cache", "~/.navi/paper-cache")))
+    cache = Path(os.path.expanduser(paper.get("cache", str(NAVI_HOME / "paper-cache"))))
     return {
         "cache": cache,
         "pdf_dir": cache / "pdfs",

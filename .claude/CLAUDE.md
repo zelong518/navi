@@ -275,7 +275,20 @@ bash integrations/tmux-claude-status/install.sh
 
 ## 配置
 
-配置文件位于 `~/.navi/config.toml`：
+配置目录默认 `~/.navi/`，可用环境变量 **`NAVI_HOME`** 覆盖（所有 skill 脚本与 MCP server 统一走这个变量，未设置时回退默认，老行为不变）。要改到别处需**三处接线**，缺一处就会出现「命令行能跑、Claude 里报找不到配置」这类不一致：
+
+| 接线点 | 作用范围 |
+|--------|----------|
+| `~/.bashrc` 里 `export NAVI_HOME=...` | 你手动敲命令时（注意 `bash -c` 非交互 shell 不读 bashrc）|
+| `.claude/settings.json` 的 `env` | Claude Code 通过 Bash 工具跑 skill 脚本时 |
+| `.mcp.json` 里各 server 的 `env` | MCP server 进程（思源 / Notion）|
+
+```json
+// .claude/settings.json（已被 gitignore）
+{ "env": { "NAVI_HOME": "/your/config/dir" } }
+```
+
+配置文件位于 `$NAVI_HOME/config.toml`（默认 `~/.navi/config.toml`）：
 
 ```toml
 [github]

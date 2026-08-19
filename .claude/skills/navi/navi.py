@@ -24,8 +24,9 @@ except ModuleNotFoundError:  # py<3.11
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from webdav import WebDAV  # noqa: E402
 
-CONFIG_PATH = Path("~/.navi/config.toml").expanduser()
-NAVI_ROOT = Path("~/.navi").expanduser()
+# 配置目录：环境变量 NAVI_HOME 优先，未设置则默认 ~/.navi
+NAVI_ROOT = Path(os.environ.get("NAVI_HOME") or "~/.navi").expanduser()
+CONFIG_PATH = NAVI_ROOT / "config.toml"
 MANIFEST = NAVI_ROOT / ".navi-sync.json"
 # 同步时跳过的本地相对路径模式（manifest 自身、日志、锁、缓存目录）
 EXCLUDE = [".navi-sync.json", "*.log", "*.lock", "__pycache__/*", "*/__pycache__/*"]

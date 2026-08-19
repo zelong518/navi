@@ -27,7 +27,9 @@ import os
 import re
 import sys
 
-CONFIG_PATH = os.path.expanduser("~/.navi/config.toml")
+# 配置目录：环境变量 NAVI_HOME 优先，未设置则默认 ~/.navi
+NAVI_HOME = os.path.expanduser(os.environ.get("NAVI_HOME") or "~/.navi")
+CONFIG_PATH = os.path.join(NAVI_HOME, "config.toml")
 BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")  # TOML 裸键，作为 [servers.<name>] 的 name
 
 

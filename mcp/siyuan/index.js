@@ -6,7 +6,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const configPath = join(homedir(), ".navi", "config.toml");
+// 配置目录：环境变量 NAVI_HOME 优先，未设置则默认 ~/.navi
+const naviHome = process.env.NAVI_HOME || join(homedir(), ".navi");
+const configPath = join(naviHome, "config.toml");
 const config = parseToml(readFileSync(configPath, "utf-8"));
 const API_BASE = (config.siyuan?.url || "http://127.0.0.1:6806").replace(/\/+$/, "");
 const API_TOKEN = config.siyuan?.token || "";
