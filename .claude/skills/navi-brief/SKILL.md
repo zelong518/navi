@@ -1,7 +1,7 @@
 ---
 name: navi-brief
 description: 每日简报，并行调用 arxiv / HF Papers / 知乎 / HN / GitHub / Product Hunt
-argument-hint: "[信息源...]"
+argument-hint: "[信息源…=弹窗询问] [--feishu KEY]"
 user-invocable: true
 allowed-tools: AskUserQuestion, Agent, Bash, Write, mcp__siyuan__list_notebooks, mcp__siyuan__create_doc
 ---

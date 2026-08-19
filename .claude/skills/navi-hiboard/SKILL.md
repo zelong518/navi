@@ -1,6 +1,7 @@
 ---
 name: navi-hiboard
 description: 把任务结果推送到华为/荣耀手机「负一屏」（HiBoard 服务动态）。任务完成后想在手机上看到结果时用。
+argument-hint: "「内容」 [--name 任务名=任务结果]"
 user-invocable: true
 allowed-tools: Bash, Read, Write
 ---

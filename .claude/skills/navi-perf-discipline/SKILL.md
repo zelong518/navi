@@ -1,6 +1,7 @@
 ---
 name: navi-perf-discipline
 description: 做性能测量、性能优化或排障时使用——一套从实战踩坑抽出的纪律：先测硬件上限再谈优化、单次测量不可信必须交错多轮、微基准排名不能外推到端到端、多少差值才够行动、冷热必须一致；排障走 replay-first 并按成本递增收缩；以及「分数是弱证据、逐字相同才是强证据」。环境实测常数读 $NAVI_HOME/cluster-facts.md。触发词："性能优化"、"变慢了"、"吞吐"、"延迟"、"benchmark"、"压测"、"A/B"、"回归"、"排障"、"复现"、"这个数字对不对"。
+argument-hint: "[measure|triage|evidence=全部]"
 user-invocable: true
 allowed-tools: Bash, Read, Write
 ---
@@ -12,6 +13,14 @@ allowed-tools: Bash, Read, Write
 
 具体环境的实测常数（存储/总线带宽上限、机器清单、已知坑）**不在本仓库**，
 读 `$NAVI_HOME/cluster-facts.md`（不存在则参考同目录 `cluster-facts.example.md` 自建）。
+
+## 参数
+
+`$ARGUMENTS` 可选：
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| 章节 | 全部 | `measure` 测量纪律 / `triage` 排障流程 / `evidence` 证据强弱，只讲这一段 |
 
 ## 一、测量纪律
 

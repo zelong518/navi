@@ -1,6 +1,7 @@
 ---
 name: navi-server
 description: 管理 navi 的远程服务器清单——把服务器名/IP/登录方式（密码或密钥）写入 ~/.navi/config.toml 的 [servers.*] 段
+argument-hint: "add | list | remove <name>"
 ---
 
 # 远程服务器管理

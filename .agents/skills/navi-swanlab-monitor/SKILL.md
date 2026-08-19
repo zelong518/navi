@@ -1,6 +1,7 @@
 ---
 name: navi-swanlab-monitor
 description: 实时监控 SwanLab 上运行中的大模型训练实验——按窗口研判异常（NaN/尖峰/发散/掉速）并告警
+argument-hint: "[实验名/run_id/URL=最近实验]"
 ---
 
 # SwanLab 训练实验实时监控

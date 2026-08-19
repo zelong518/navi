@@ -1,6 +1,7 @@
 ---
 name: navi
 description: 把 ~/.navi（config.toml + paper-cache 等）镜像备份到 WebDAV（账号配在 [navi] 段）——`navi sync` 增量上传，`navi pull` 在新机器上恢复，`navi status` 看差异
+argument-hint: "sync | pull | status [--delete] [--dry-run]"
 ---
 
 # Navi 配置/缓存 WebDAV 备份

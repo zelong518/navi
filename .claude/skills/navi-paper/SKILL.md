@@ -1,7 +1,7 @@
 ---
 name: navi-paper
 description: 把 Zotero 论文库同步到本地并用 PaperQA2 做语义问答——`paper sync` 拉 PDF 建向量索引，`paper ask` 对自己的论文库带引用问答
-argument-hint: "sync | ask [问题] | status"
+argument-hint: "sync [--full] | ask [问题=交互式] | status"
 user-invocable: true
 allowed-tools: Bash, Read
 ---

@@ -1,9 +1,20 @@
 ---
 name: navi-hfpapers
 description: 获取 Hugging Face Daily Papers 今日热门论文
+argument-hint: "[条数=全部] [关键词…]"
 ---
 
 # Hugging Face Daily Papers
+
+## 参数
+
+`$ARGUMENTS` 可选：
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| 条数（纯数字） | `10` | 输出前 N 条；给 `all` / `全部` 则不截断 |
+
+其余词按关键词过滤标题（大小写不敏感），给了就只留命中的条目；一条都不命中时如实说明，不要放宽条件硬凑。
 
 ## 任务
 

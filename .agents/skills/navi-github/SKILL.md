@@ -1,6 +1,7 @@
 ---
 name: navi-github
 description: 获取 GitHub 每日热门仓库摘要，支持按语言筛选
+argument-hint: "[语言=全部] [条数=10]"
 ---
 
 # GitHub 每日热榜

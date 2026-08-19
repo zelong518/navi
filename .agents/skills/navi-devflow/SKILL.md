@@ -1,6 +1,7 @@
 ---
 name: navi-devflow
 description: 提 issue、开 MR/PR、写 commit、准备合并时使用——一套让别人不依赖你的环境也能复现和判断的协作规范：issue 五段（含用矩阵表呈现单变量对照）、MR 五段（What / Why it broke / Changes / How verified / Risk）、conventional commit、分支命名、以及合并前的验证门禁。仓库地址与 token 读 $NAVI_HOME/devflow.md。触发词："提 issue"、"开 MR"、"merge request"、"提 PR"、"合并"、"commit 信息"、"code review"、"要不要能合了"。
+argument-hint: "[issue|mr|commit|gate=全部] [仓库别名]"
 user-invocable: true
 allowed-tools: Bash, Read, Write
 ---
@@ -14,6 +15,15 @@ allowed-tools: Bash, Read, Write
 各仓库的 host / 项目路径 / git 身份 / token 获取方式**不在本仓库**，
 读 `$NAVI_HOME/devflow.md`（不存在则参考同目录 `devflow.example.md` 自建）。
 性能类改动的测量方法见 `navi-perf-discipline` skill。
+
+## 参数
+
+`$ARGUMENTS` 可选：
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| 章节 | 全部 | `issue` / `mr` / `commit` / `gate`，只讲这一段 |
+| 仓库别名 | 无 | 给了就先从 `$NAVI_HOME/devflow.md` 取该仓库的 host / 身份 / 是否禁 AI 署名 |
 
 ## Token 先验 scope，再动手
 

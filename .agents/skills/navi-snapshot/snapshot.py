@@ -38,6 +38,7 @@ tmp/ 之类重建即可的东西）不收。Codex 把会话/记忆存在 sqlite 
 
 import argparse
 import hashlib
+import re
 import json
 import os
 import shutil
@@ -204,10 +205,18 @@ def do_save(args, cfg) -> int:
              "plugins": not args.no_plugins}
 
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    name = f"snapshot-{stamp}" + (f"-{args.tag}" if args.tag else "")
-    work = dest / name
+    slot = getattr(args, "name", None)
+    if slot:
+        # 命名槽位：snapshot-<名字>，重复 upload 同名 = 更新这个槽位
+        name = slot if slot.startswith("snapshot-") else f"snapshot-{slot}"
+    else:
+        name = f"snapshot-{stamp}" + (f"-{args.tag}" if args.tag else "")
+    final_path = dest / name
+    replacing = final_path.exists()
+    # 先建到临时名，成功后再换上去——中途失败不会破坏已有快照
+    work = dest / f".{name}.new-{stamp}"
     if work.exists():
-        raise SystemExit(f"目标已存在：{work}")
+        shutil.rmtree(work)
     work.mkdir(parents=True)
     os.chmod(work, 0o700)   # 可能含凭证，别让同机其他用户读
 
@@ -266,13 +275,25 @@ def do_save(args, cfg) -> int:
     (work / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    final = work
     if args.archive:
         tgz = dest / f"{name}.tar.gz"
-        with tarfile.open(tgz, "w:gz") as tar:
+        replacing = tgz.exists()
+        with tarfile.open(work.parent / f".{name}.new-{stamp}.tar.gz", "w:gz") as tar:
             tar.add(work, arcname=name)
         shutil.rmtree(work)
+        if replacing:
+            tgz.unlink()
+        (work.parent / f".{name}.new-{stamp}.tar.gz").rename(tgz)
         final = tgz
+    else:
+        old = None
+        if replacing:
+            old = dest / f".{name}.old-{stamp}"
+            final_path.rename(old)
+        work.rename(final_path)
+        if old:
+            shutil.rmtree(old, ignore_errors=True)
+        final = final_path
 
     # latest 软链（失败不致命，有些后端不支持软链）
     link = dest / "latest"
@@ -283,7 +304,7 @@ def do_save(args, cfg) -> int:
     except OSError:
         pass
 
-    print(f"✅ 快照已保存：{final}")
+    print(f"{'♻️  已更新同名快照' if replacing else '✅ 快照已保存'}：{final}")
     print(f"   Claude Code: {manifest['sources']['claude'] or '未找到'}"
           f"{'  ' + manifest['versions']['claude'] if manifest['versions']['claude'] else ''}")
     print(f"   Codex:       {manifest['sources']['codex'] or '未找到'}"
@@ -312,13 +333,18 @@ def snapshots_in(dest: Path) -> list:
     return sorted(out, key=lambda p: p.name)
 
 
+TS_NAME = re.compile(r"^snapshot-\d{8}-\d{6}")
+
+
 def prune(dest: Path, keep) -> None:
+    """只滚动清理时间戳快照；命名槽位（upload <名字>）是用户显式建的，永不自动删。"""
     if not keep:
         return
-    snaps = snapshots_in(dest)
+    snaps = [p for p in snapshots_in(dest) if TS_NAME.match(p.name)]
     for old in snaps[: max(0, len(snaps) - int(keep))]:
         shutil.rmtree(old) if old.is_dir() else old.unlink()
         print(f"   已清理旧快照：{old.name}")
+    fix_latest(dest)   # 被清掉的可能正是 latest 的目标
 
 
 def read_manifest(snap: Path) -> dict:
@@ -363,10 +389,63 @@ def do_list(args, cfg) -> int:
 TARGETS = {"claude": CLAUDE_ROOT, "codex": CODEX_ROOT, "home": HOME}
 
 
+def newest(dest: Path) -> Path | None:
+    """按 manifest 的创建时间取最新一份（拿不到就退回 mtime）。"""
+    snaps = snapshots_in(dest)
+    if not snaps:
+        return None
+    def key(p: Path):
+        try:
+            return read_manifest(p).get("created", "")
+        except Exception:
+            return ""
+    return max(snaps, key=lambda p: (key(p), p.stat().st_mtime))
+
+
+def fix_latest(dest: Path) -> None:
+    """latest 悬空（目标被删）时重新指向最新一份；没有快照就把软链去掉。"""
+    link = dest / "latest"
+    if link.is_symlink() and not link.exists():   # 悬空
+        link.unlink()
+    if link.exists():
+        return
+    n = newest(dest)
+    if n:
+        try:
+            link.symlink_to(n.name)
+        except OSError:
+            pass
+
+
+def resolve_ref(dest: Path, ref: str | None) -> Path:
+    """把用户给的引用解析成快照路径：省略 = latest，可以是名字、snapshot-名字、或直接路径。"""
+    ref = (ref or "latest").strip()
+    if ref == "latest":
+        fix_latest(dest)                          # 悬空自动修
+        link = dest / "latest"
+        if not link.exists():
+            n = newest(dest)
+            if n is None:
+                raise SystemExit(f"{dest} 下还没有快照，先跑 upload。")
+            print(f"（没有可用的 latest，回退到最新一份：{n.name}）")
+            return n
+        return link
+    direct = Path(ref).expanduser()
+    if direct.exists():
+        return direct
+    for cand in (dest / ref, dest / f"snapshot-{ref}",
+                 dest / f"{ref}.tar.gz", dest / f"snapshot-{ref}.tar.gz"):
+        if cand.exists():
+            return cand
+    avail = [p.name for p in snapshots_in(dest)] if dest.exists() else []
+    raise SystemExit(
+        f"找不到快照 {ref!r}（在 {dest} 下）。"
+        + (f"\n可用：{', '.join(avail)}" if avail else "\n该目录下还没有快照，先跑 upload。"))
+
+
 def do_restore(args, cfg) -> int:
-    snap = Path(args.snapshot).expanduser()
-    if not snap.exists():
-        raise SystemExit(f"快照不存在：{snap}")
+    dest = Path(args.dest or cfg.get("dest") or (NAVI_HOME / "snapshots")).expanduser()
+    snap = resolve_ref(dest, getattr(args, "snapshot", None))
 
     tmp = None
     root = snap
@@ -442,34 +521,57 @@ def do_restore(args, cfg) -> int:
 
 
 def parse_args():
-    ap = argparse.ArgumentParser(description="Claude Code / Codex 本地配置快照")
+    ap = argparse.ArgumentParser(description="Claude Code / Codex 状态快照")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    s = sub.add_parser("save", help="保存快照")
-    s.add_argument("--dest", help="快照存放目录（优先于配置 [snapshot].dest）")
-    s.add_argument("--tag", help="标签，附在快照名后便于识别")
-    s.add_argument("--project", help="额外收该项目目录下的 .claude/.codex/.agents 等")
-    s.add_argument("--archive", action="store_true", help="打成单个 tar.gz")
-    s.add_argument("--keep", type=int, help="只保留最近 N 份，超出的删掉")
-    s.add_argument("--no-history", action="store_true",
-                   help="不收会话记录（默认会收 projects / sessions / history.jsonl 等）")
-    s.add_argument("--no-credentials", action="store_true",
+    # upload —— 存快照（save 为兼容别名）
+    u = sub.add_parser("upload", aliases=["save"], help="把当前状态存成快照（默认带时间戳）")
+    u.add_argument("name", nargs="?",
+                   help="命名槽位：存成 snapshot-<名字>，重复 upload 同名即更新它；省略则用时间戳")
+    u.add_argument("--dest", help="快照目录（默认取配置 [snapshot].dest）")
+    u.add_argument("--tag", help="给时间戳快照加后缀（与位置参数互斥用法：snapshot-<时间戳>-<tag>）")
+    u.add_argument("--project", help="额外收该项目目录下的 .claude/.codex/.agents 等")
+    u.add_argument("--archive", action="store_true", help="打成单个 tar.gz")
+    u.add_argument("--keep", type=int, help="只保留最近 N 份时间戳快照（命名槽位不受影响）")
+    u.add_argument("--no-history", action="store_true",
+                   help="不收会话记录（默认会收 projects / sessions / sqlite 等）")
+    u.add_argument("--no-credentials", action="store_true",
                    help="不收凭证（默认会收，否则重启后要重新登录）")
-    s.add_argument("--no-plugins", action="store_true",
+    u.add_argument("--no-plugins", action="store_true",
                    help="不收已安装插件目录（默认会收，否则重启后要重装）")
+    u.set_defaults(func=do_save)
 
-    l = sub.add_parser("list", help="列出已有快照")
-    l.add_argument("--dest", help="快照目录")
+    # sync —— 从快照恢复（restore 为兼容别名）
+    y = sub.add_parser("sync", aliases=["restore"], help="从快照恢复到本地（默认用 latest）")
+    y.add_argument("snapshot", nargs="?", default="latest",
+                   help="快照引用：省略=latest，可给名字 / snapshot-名字 / 直接路径 / tar.gz")
+    y.add_argument("--dest", help="快照目录（默认取配置 [snapshot].dest）")
+    y.add_argument("--dry-run", action="store_true", help="只打印会动哪些文件，不改动")
+    y.add_argument("--force", action="store_true", help="md5 校验不符也继续（慎用）")
+    y.add_argument("--project-dest", help="把快照里的 project/ 内容还原到该目录（默认不还原）")
+    y.set_defaults(func=do_restore)
 
-    r = sub.add_parser("restore", help="从快照恢复")
-    r.add_argument("snapshot", help="快照目录或 tar.gz 路径")
-    r.add_argument("--dry-run", action="store_true", help="只打印会动哪些文件")
-    r.add_argument("--force", action="store_true", help="md5 校验不符也继续")
-    r.add_argument("--project-dest", help="把快照里的 project/ 内容还原到该目录（默认不还原）")
+    l = sub.add_parser("list", aliases=["ls"], help="列出已有快照")
+    l.add_argument("--dest", help="快照目录（默认取配置 [snapshot].dest）")
+    l.set_defaults(func=do_list)
+
+    pr = sub.add_parser("prune", help="只保留最近 N 份时间戳快照（命名槽位不动）")
+    pr.add_argument("keep", nargs="?", type=int, default=10, help="保留份数，默认 10")
+    pr.add_argument("--dest", help="快照目录（默认取配置 [snapshot].dest）")
+    pr.set_defaults(func=do_prune)
+
     return ap.parse_args()
+
+
+def do_prune(args, cfg) -> int:
+    dest = Path(args.dest or cfg.get("dest") or (NAVI_HOME / "snapshots")).expanduser()
+    before = len(snapshots_in(dest))
+    prune(dest, args.keep)
+    after = len(snapshots_in(dest))
+    print(f"✅ 清理完成：{before} → {after} 份（保留最近 {args.keep} 份时间戳快照）")
+    return 0
 
 
 if __name__ == "__main__":
     a = parse_args()
-    c = load_cfg()
-    sys.exit({"save": do_save, "list": do_list, "restore": do_restore}[a.cmd](a, c))
+    sys.exit(a.func(a, load_cfg()))

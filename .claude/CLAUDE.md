@@ -22,7 +22,7 @@
 | `/navi-feishu 「内容」` | 把内容推送到飞书群自定义机器人（webhook，KEY 可传参或配置）|
 | `/navi-perf-discipline` | 性能测量与排障纪律（先测上限、交错 A/B、replay-first、证据强弱）|
 | `/navi-devflow` | issue / MR / commit 规范与合并门禁 |
-| `/navi-snapshot save\|list\|restore` | 把本地 Claude Code / Codex 的工作状态（配置+会话+凭证+插件）快照到持久目录，重启后一条命令恢复 |
+| `/navi-snapshot upload\|sync\|list\|prune` | 把本地 Claude Code / Codex 的工作状态（配置+会话+凭证+插件）快照到持久目录，重启后一条命令恢复 |
 | `/navi-dlc list\|logs\|workspaces` | 查阿里云 PAI-DLC 训练任务（跨工作空间列 Running + 卡数/时长/属主，取节点日志）|
 
 ## Paper — Zotero 论文库语义问答
@@ -137,15 +137,23 @@ Codex 把会话/记忆存在带版本号的 sqlite 里（`state_5.sqlite` / `mem
 所以白名单支持 glob，且 sqlite 走 **backup API** 取一致快照（直接 `cp` 遇 WAL 会撕裂）。
 
 ```bash
-python3 .claude/skills/navi-snapshot/snapshot.py save --tag 重启前   # 存快照
-python3 .claude/skills/navi-snapshot/snapshot.py list               # 列快照
-python3 .claude/skills/navi-snapshot/snapshot.py restore <快照> --dry-run  # 先看会动什么
-python3 .claude/skills/navi-snapshot/snapshot.py restore <快照>      # 真恢复
+python3 .claude/skills/navi-snapshot/snapshot.py upload           # 存时间戳快照并更新 latest
+python3 .claude/skills/navi-snapshot/snapshot.py upload 重启前     # 命名槽位，同名再 upload 即更新
+python3 .claude/skills/navi-snapshot/snapshot.py sync --dry-run   # 用 latest，先看会动什么
+python3 .claude/skills/navi-snapshot/snapshot.py sync 重启前       # 指定快照恢复
+python3 .claude/skills/navi-snapshot/snapshot.py list / prune 10
 ```
 
 默认**全量**（配置 + 会话 + 凭证 + 插件），瘦身用 `--no-history` / `--no-credentials` /
 `--no-plugins`；`--archive` 打成单个 tar.gz，`--keep N` 只留最近 N 份，
 `--project DIR` 额外收项目级 `.claude`/`.codex`/`.agents`。
+
+`upload <名字>` 是**命名槽位**：重复 upload 同名会原子替换（先写临时目录、成功才换上去），
+且永不被滚动清理删除；不给名字则是时间戳快照，参与 `--keep` / `prune`。
+`sync` 省略参数用 `latest`，也可给名字 / `snapshot-名字` / 路径 / `.tar.gz`。
+
+**所有 skill 的 `argument-hint` 都写明了子命令、参数与默认值**，
+在 Claude Code 里敲 `/navi-` 就能在补全里看到可用操作，不必翻文档。
 
 文件结构：
 - `.claude/skills/navi-snapshot/SKILL.md` — 编排说明
@@ -158,7 +166,7 @@ python3 .claude/skills/navi-snapshot/snapshot.py restore <快照>      # 真恢�
 挂 cron 每小时一份、留最近 24 份，重启最多丢 1 小时：
 
 ```cron
-0 * * * * cd /path/to/navi && NAVI_HOME=/your/config python3 .claude/skills/navi-snapshot/snapshot.py save --keep 24 >> /tmp/navi-snapshot.log 2>&1
+0 * * * * cd /path/to/navi && NAVI_HOME=/your/config python3 .claude/skills/navi-snapshot/snapshot.py upload --keep 24 >> /tmp/navi-snapshot.log 2>&1
 ```
 
 ## Navi 配置/缓存 WebDAV 备份

@@ -1,6 +1,7 @@
 ---
 name: navi-swanlab-analyze
 description: 分析 SwanLab 上的大模型训练实验——主打挖掘「变量之间的关系」（相关/领先滞后/同步变点/结构耦合/族内关系），产出关系图谱而非健康结论
+argument-hint: "[实验名/run_id/URL=最近实验]"
 ---
 
 # SwanLab 训练实验分析

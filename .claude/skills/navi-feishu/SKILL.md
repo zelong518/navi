@@ -1,7 +1,7 @@
 ---
 name: navi-feishu
 description: 把任务结果 / 通知推送到飞书群自定义机器人（webhook）。想在飞书群里收到结果时用。
-argument-hint: "「内容」 [--title 标题] [--key webhook末段]"
+argument-hint: "「内容」 [--title 标题] [--key KEY=配置]"
 user-invocable: true
 allowed-tools: Bash, Read, Write
 ---

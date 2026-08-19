@@ -1,7 +1,7 @@
 ---
 name: navi-dlc
 description: 查阿里云 PAI-DLC 训练任务——`dlc list` 跨全部可访问工作空间列 Running 任务（含 GPU 卡数 / 已运行时长 / 属主），`dlc logs <jobid>` 取某任务最后一个节点的日志，`dlc workspaces` 列可访问工作空间
-argument-hint: "list [--all-status] [--mine] [--workspace ID] | logs <jobid> [--lines N] | workspaces"
+argument-hint: "list [--all-status] [--mine] [--workspace ID] | logs <jobid> [--lines=50] | workspaces"
 user-invocable: true
 allowed-tools: Bash, Read
 ---
