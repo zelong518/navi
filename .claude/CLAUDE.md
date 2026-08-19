@@ -23,6 +23,7 @@
 | `/navi-perf-discipline` | 性能测量与排障纪律（先测上限、交错 A/B、replay-first、证据强弱）|
 | `/navi-devflow` | issue / MR / commit 规范与合并门禁 |
 | `/navi-snapshot upload\|sync\|list\|prune` | 把本地 Claude Code / Codex 的工作状态（配置+会话+凭证+插件）快照到持久目录，重启后一条命令恢复 |
+| `/navi-polymarket assets\|positions\|market\|strategy\|analyze` | 查 Polymarket 资产/持仓/行情 + 本地策略库 + 持仓分析（只读，不下单）|
 | `/navi-dlc list\|logs\|workspaces` | 查阿里云 PAI-DLC 训练任务（跨工作空间列 Running + 卡数/时长/属主，取节点日志）|
 
 ## Paper — Zotero 论文库语义问答
@@ -100,6 +101,39 @@ python3 .claude/skills/navi-paper/paper.py status           # 查看 cache / 索
 只描述「单个指标是什么」（含义/期望趋势/健康范围/异常信号）；**指标之间的关系由 workflow 自动从数据挖掘**，无需手写，文末可选填强耦合先验。
 
 依赖：`pip install -U swanlab`（需 >=0.8.0，提供 `swanlab.Api`）。
+
+## Polymarket — 资产 / 持仓 / 策略
+
+查 Polymarket 预测市场的资产估值、持仓明细、成交流水、单市场行情（订单簿深度/价差/价格历史），
+并管理本地策略库、对持仓做分析。
+
+**⛔ 只读边界**：不下单、不签名、不碰私钥。所有端点都是公开只读的，只需要一个**公开钱包地址**
+（proxy wallet，`polymarket.com/profile/0x...` 里那串）。下单是不可逆的真金白银操作，
+不在本 skill 范围内。
+
+设计原则：**取数走公开 API，判断交给模型**——`analyze` 只吐裸数据（持仓 + 每仓实时
+mid/spread/一周区间 + 流水），结论由 SKILL.md 的编排规则约束模型给出；脚本只做求和排序。
+
+三组已实测端点（2026-08）：`data-api` 的 `/value` `/positions` `/activity`（账户），
+`gamma-api` 的 `/markets`（元数据），`clob` 的 `/book` `/midpoint` `/spread` `/prices-history`（行情）。
+
+```bash
+python3 .claude/skills/navi-polymarket/polymarket.py assets            # 估值/成本/盈亏/可赎回
+python3 .claude/skills/navi-polymarket/polymarket.py positions --sort pnl
+python3 .claude/skills/navi-polymarket/polymarket.py market <slug> --history 1m
+python3 .claude/skills/navi-polymarket/polymarket.py strategy add <名字> --file s.md
+python3 .claude/skills/navi-polymarket/polymarket.py analyze <策略名>   # 裸数据 JSON
+```
+
+编排里有两条实质规则值得单独记：**簿内深度 < 仓位市值时要点明「按现价估的市值是虚的」**
+（预测市场最容易骗人的地方），以及**只有 `redeemable` 且价值 >0 才提醒去 redeem**
+（价值归零的已结算仓位赎无可赎）。
+
+策略是本地 markdown（`$NAVI_HOME/polymarket/strategies/*.md`，含论点/标的/入场/出场/
+仓位风控/复盘六节模板），`strategy add` 同名会覆盖并留 `.md.bak`；**不上传到任何外部服务**，
+想跨机同步走 `/navi sync`。
+
+配置：`[polymarket].address` 必填，`strategies` 可选。
 
 ## 知识型 skill — perf-discipline / devflow
 
