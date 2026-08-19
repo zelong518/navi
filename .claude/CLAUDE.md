@@ -42,13 +42,38 @@ python3 .claude/skills/paper/paper.py status           # 查看 cache / 索引
 
 配置：`~/.navi/config.toml` 的 `[paper]`（cache + SiliconFlow key + 模型）与 `[zotero]`（API key + WebDAV）。可挂 cron 每日 `paper sync` 增量同步。
 
-## MCP — 思源笔记
+## MCP — 思源笔记 / Notion
 
-通过 MCP Server 连接思源笔记，支持文档创建、编辑、搜索等操作。配置在仓库根 `.mcp.json` 中（Claude Code 只从 `.mcp.json` / `~/.claude.json` 读取 MCP server，不读 `settings.json`）。
+通过 MCP Server 连接笔记软件，让 Claude 直接读写笔记。配置在仓库根 `.mcp.json` 中（Claude Code 只从 `.mcp.json` / `~/.claude.json` 读取 MCP server，不读 `settings.json`）；`.mcp.json` 已被 gitignore，需本机自建：
 
-文件结构：
+```json
+{
+  "mcpServers": {
+    "notion": { "command": "node", "args": ["mcp/notion/index.js"] },
+    "siyuan": { "command": "node", "args": ["mcp/siyuan/index.js"] }
+  }
+}
+```
+
+### 思源笔记
+
+文档创建 / 编辑 / 搜索、块增删改、SQL 查询。凭证读 `[siyuan]` 段。
+
 - `mcp/siyuan/index.js` — MCP Server 实现
 - `mcp/siyuan/package.json` — 依赖声明
+
+### Notion
+
+读：`search`（只搜标题）/ `get_page`（正文递归转 markdown）/ `query_database` / `get_database`（看 schema）/ `list_databases`；
+写：`create_page` / `append_markdown` / `update_block` / `update_page`（含归档）/ `delete_block`。
+
+设计原则：**读写都以 markdown 为界面**——Notion API 只收 block 数组，`markdown.js` 做纯函数双向转换（标题/嵌套列表/待办/引用/代码块/表格/行内格式），Notion 的两条硬限制（rich_text ≤ 2000 字符、children ≤ 100/次）在转换层与 `appendBlocks` 里自动兜住。
+
+- `mcp/notion/index.js` — MCP Server 实现（认证 / 工具 / 分页分批）
+- `mcp/notion/markdown.js` — Notion block ⇄ markdown 双向转换
+- `mcp/notion/README.md` — 拿 token、连接集成、已知边界
+
+配置：`[notion]` 段，`token` 必填（集成的 Internal Integration Secret），`database_id` 可选（`create_page` 默认父级）。**建集成后必须去目标页面 `···` → 连接 → 添加集成**，否则一律 `object_not_found`；加在父页面上子页面自动继承。API 版本固定 `2022-06-28`（`2025-09-03` 起 database 拆成了 data source，`parent` 语义会变），别随手改。
 
 ## SwanLab 训练实验分析 / 监控
 
@@ -217,11 +242,14 @@ ccusage / claude-hud。
 
 ### 1. MCP 依赖
 
-检查 `mcp/siyuan/node_modules` 是否存在，不存在则执行：
+检查 `mcp/siyuan/node_modules` / `mcp/notion/node_modules` 是否存在，不存在则按需执行：
 
 ```bash
-cd mcp/siyuan && npm install
+cd mcp/siyuan && npm install    # 思源
+cd mcp/notion && npm install    # Notion
 ```
+
+再在仓库根建 `.mcp.json`（见上文 MCP 章节），只注册要用的那几个 server。
 
 ### 2. 配置文件
 
@@ -234,6 +262,10 @@ token = "ghp_xxx"           # GitHub token，无需勾选任何 scope
 [siyuan]
 url = "http://127.0.0.1:6806"
 token = "your-siyuan-api-token"
+
+[notion]                              # MCP 读写 Notion 笔记
+token       = "ntn_xxx"              # Internal Integration Secret
+database_id = ""                      # 可选，create_page 的默认父级
 
 [swanlab]
 api_host = "http://host:port/api"   # SWANLAB_API_HOST，自建后端地址（云可留空）
@@ -297,6 +329,10 @@ token = "ghp_xxx"
 [siyuan]
 url = "http://127.0.0.1:6806"
 token = "your-siyuan-api-token"
+
+[notion]                              # MCP 读写 Notion 笔记
+token       = "ntn_xxx"              # Internal Integration Secret
+database_id = ""                      # 可选，create_page 的默认父级
 
 [swanlab]
 api_host = "http://host:port/api"   # SWANLAB_API_HOST（云可留空）
