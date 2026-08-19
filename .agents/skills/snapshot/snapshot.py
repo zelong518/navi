@@ -6,7 +6,8 @@
 重启后一条 restore 就能回到原来的工作状态，不用重新登录、不用重装插件。
 
 原理：白名单拷贝 + manifest 记录每文件 md5。只有纯运行时缓存（cache/、ide/、
-statsig 之类重建即可的东西）不收。
+tmp/ 之类重建即可的东西）不收。Codex 把会话/记忆存在 sqlite 里（state_*.sqlite
+这类带版本号的文件），用 sqlite 的 backup API 取一致快照，避免 WAL 撕裂。
 
 用法：
     python3 snapshot.py save --dest /path/to/dir          # 存一份快照（配置 + 会话）
@@ -81,10 +82,15 @@ CLAUDE_OPTIONAL = {
 CLAUDE_TOPLEVEL = [".claude.json"]
 
 CODEX_ROOT = HOME / ".codex"
-CODEX_ITEMS = ["config.toml", "AGENTS.md", "agents", "prompts", "skills", "config.json"]
+CODEX_ITEMS = ["config.toml", "AGENTS.md", "agents", "prompts", "skills",
+               "config.json", "installation_id", ".personality_migration"]
 CODEX_OPTIONAL = {
-    "history": ["history.jsonl", "sessions", "log"],
+    # Codex 把会话/记忆/目标存在带版本号的 sqlite 里（state_5.sqlite 这种），
+    # 不是 jsonl；用 glob 匹配版本号。-wal/-shm 不单独收，sqlite backup 会合并进主库。
+    "history": ["state_*.sqlite", "memories_*.sqlite", "goals_*.sqlite", "logs_*.sqlite",
+                "shell_snapshots", "sessions", "history.jsonl", "log"],
     "credentials": ["auth.json"],
+    "plugins": ["plugins"],
 }
 
 # --project 时额外收的项目级定制
@@ -118,9 +124,34 @@ def md5_of(path: Path) -> str:
     return h.hexdigest()
 
 
+def copy_sqlite(src: Path, dst: Path) -> bool:
+    """用 sqlite backup API 拷一份一致的库（把 WAL 合并进去）。失败回 False 让调用方降级。"""
+    try:
+        import sqlite3
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        con = sqlite3.connect(f"file:{src}?mode=ro", uri=True)
+        try:
+            out = sqlite3.connect(dst)
+            try:
+                with out:
+                    con.backup(out)
+            finally:
+                out.close()
+        finally:
+            con.close()
+        return True
+    except Exception:
+        for junk in (dst, Path(str(dst) + "-wal"), Path(str(dst) + "-shm")):
+            if junk.exists():
+                junk.unlink()
+        return False
+
+
 def copy_item(src: Path, dst: Path, keep_git: bool = False) -> int:
     """拷一个文件或整棵目录，返回拷到的文件数。父目录按需创建。"""
     dst.parent.mkdir(parents=True, exist_ok=True)
+    if src.is_file() and src.suffix in (".sqlite", ".db") and copy_sqlite(src, dst):
+        return 1   # sqlite 走 backup API，成功即完事
     if src.is_dir():
         shutil.copytree(src, dst, ignore=IGNORE_KEEP_GIT if keep_git else IGNORE,
                         dirs_exist_ok=True, symlinks=True)
@@ -144,6 +175,16 @@ def collect(root: Path, items: list, out: Path, prefix: str) -> tuple[list, list
     """把 root 下的 items 拷到 out/prefix。回 (已收清单, 缺失清单)。"""
     got, missing = [], []
     for rel in items:
+        if "*" in rel:   # glob 项：展开成实际文件名，一个都没匹配上才算缺失
+            hits = sorted(root.glob(rel))
+            if not hits:
+                missing.append(rel)
+            for h in hits:
+                r = h.relative_to(root).as_posix()
+                got.append({"path": f"{prefix}/{r}",
+                            "files": copy_item(h, out / prefix / r),
+                            "kind": "dir" if h.is_dir() else "file"})
+            continue
         src = root / rel
         if not src.exists():
             missing.append(rel)

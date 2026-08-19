@@ -106,8 +106,12 @@ python3 .claude/skills/paper/paper.py status           # 查看 cache / 索引
 **完整工作状态**存到持久目录，重启后一条 `restore` 复活。
 
 设计原则：**白名单 + 可验证**——只收明确列出的配置/会话/凭证/插件项（纯运行时缓存
-如 `cache/`、`ide/` 不收），manifest 记录每文件 md5，`restore` 先校验再写回，
+如 `cache/`、`ide/`、`tmp/` 不收），manifest 记录每文件 md5，`restore` 先校验再写回，
 被覆盖的原文件自动备份到 `~/.navi-pre-restore-<时间戳>/`。纯 stdlib，无依赖。
+
+两个工具的存储形态不同：Claude Code 是 jsonl（`projects/`、`history.jsonl`），
+Codex 把会话/记忆存在带版本号的 sqlite 里（`state_5.sqlite` / `memories_1.sqlite`），
+所以白名单支持 glob，且 sqlite 走 **backup API** 取一致快照（直接 `cp` 遇 WAL 会撕裂）。
 
 ```bash
 python3 .claude/skills/snapshot/snapshot.py save --tag 重启前   # 存快照

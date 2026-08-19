@@ -42,11 +42,14 @@ python3 $S restore <快照> --project-dest DIR   # 连项目级定制一起还�
 
 | 类别 | 默认 | 内容 |
 |------|------|------|
-| 配置 | ✅ | `settings.json` / `CLAUDE.md` / `agents` / `skills` / `commands` / `hooks` / `keybindings` / `statusline.sh` / `~/.claude.json`；Codex 的 `config.toml` / `AGENTS.md` / `prompts` |
-| 会话 | ✅ | `projects`（会话记录）/ `sessions` / `history.jsonl` / `todos` / `file-history` / `shell-snapshots`（支撑 `/rewind`）|
+| 配置 | ✅ | `settings.json` / `CLAUDE.md` / `agents` / `skills` / `commands` / `hooks` / `keybindings` / `statusline.sh` / `~/.claude.json`；Codex 的 `config.toml` / `AGENTS.md` / `prompts` / `skills` / `installation_id` |
+| 会话 | ✅ | Claude：`projects`（会话记录）/ `sessions` / `history.jsonl` / `todos` / `file-history` / `shell-snapshots`（支撑 `/rewind`）；Codex：`state_*.sqlite`（会话）/ `memories_*.sqlite`（记忆）/ `goals_*.sqlite` / `logs_*.sqlite` / `shell_snapshots` |
 | 凭证 | ✅ | `.credentials.json` / `auth.json` —— 不收的话每次重启都要重新登录 |
 | 插件 | ✅ | `plugins/`（数 MB）—— 不收的话重启后要重装 |
-| 运行时垃圾 | ❌ | `cache/` / `ide/` / `backups/` 等重建即可的东西 |
+| 运行时垃圾 | ❌ | `cache/` / `ide/` / `backups/` / `tmp/` / `models_cache.json` 等重建即可的东西 |
+
+Codex 的会话与记忆存在带版本号的 sqlite 里（`state_5.sqlite` 这种），白名单用 glob 匹配，
+并走 **sqlite backup API** 取一致快照——直接 `cp` 遇上 WAL 可能拷到撕裂状态。
 
 瘦身开关：`--no-history` / `--no-credentials` / `--no-plugins`。
 
