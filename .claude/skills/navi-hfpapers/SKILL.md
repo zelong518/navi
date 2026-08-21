@@ -3,7 +3,7 @@ name: navi-hfpapers
 description: 获取 Hugging Face Daily Papers 今日热门论文
 argument-hint: "[条数=全部] [关键词…]"
 user-invocable: true
-allowed-tools: WebFetch
+allowed-tools: WebFetch, WebSearch, Bash, Read, mcp__notion__get_page, mcp__notion__create_page, mcp__notion__append_markdown
 ---
 
 # Hugging Face Daily Papers
@@ -66,3 +66,23 @@ https://huggingface.co/api/daily_papers?date={YYYY-MM-DD}&sort=trending
 - **代码**：仅在 `githubRepo` 非空时显示此行
 - 列出全部论文，不要截断
 - 除标题和作者外用中文输出
+
+## 写入 Notion（抓完必做）
+
+抓完**除了终端输出，还要按日期归档到 Notion**。流程与页面树见共享规范
+`$S/../navi-notion/SINK.md`（`$S` 为本 skill 的 base directory；软链装法下等价于
+`~/.claude/skills/navi-notion/SINK.md`），先读它再动手。
+
+**Notion 版式**（子页名 `hfpaper`，与 08-19 那页保持一致，别改）：
+
+```
+抓取日期 2026-08-21 · 共 50 篇 · 来源 huggingface.co/api/daily_papers?sort=trending
+### 1. Paper Title (👍 660 💬 4)
+**作者**：Author1, Author2, Author3, Author4, Author5 et al.
+**摘要**：2-3 句中文摘要
+**链接**：[arxiv.org/abs/xxxx.xxxxx](https://arxiv.org/abs/xxxx.xxxxx) · **代码**：[owner/repo](https://github.com/owner/repo)
+```
+
+- `githubRepo` 为空时省掉 ` · **代码**：…` 这半句，不要留空链接
+- 写**全部论文**，不受 `[条数]` 参数影响——终端可以截断，归档必须完整
+- **每篇 4 个块**，一次 `append_markdown` 不超过 22 篇，按批切开多次追加

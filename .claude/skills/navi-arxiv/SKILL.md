@@ -3,7 +3,7 @@ name: navi-arxiv
 description: 获取今日 arxiv 论文并按你的关注方向筛选（默认五类：大语言模型基模 / 训练系统 / 推理系统 / 可靠性与故障观测 / 大模型安全）。方向定义读 $NAVI_HOME/arxiv-directions.md，改方向不用改 skill。
 argument-hint: "[方向…=全选：基模|训练系统|推理系统|可靠性|安全] [条数=全部]"
 user-invocable: true
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, mcp__notion__get_page, mcp__notion__create_page, mcp__notion__append_markdown
 context: fork
 ---
 
@@ -117,3 +117,31 @@ python3 "$S/fetch.py" > /tmp/arxiv-today.json
 - `feed_date` 若不是今天（arxiv 尚未滚动），如实说明这批是哪天的，不要写成今天的
 - 如果筛选后没有相关论文，明确告知用户
 - 如果今天完全没有新论文（周末），告知用户 arxiv 周末不更新，并展示最近提交的相关论文
+
+## 写入 Notion（抓完必做）
+
+筛完**除了终端输出，还要按日期归档到 Notion**。流程与页面树见共享规范
+`$S/../navi-notion/SINK.md`（软链装法下等价于 `~/.claude/skills/navi-notion/SINK.md`），
+先读它再动手。
+
+**Notion 版式**（子页名 `arxiv`，与 08-19 那页保持一致，别改）：
+
+```
+# arxiv 今日筛选 · 2026-08-21
+数据来源: RSS（rss.arxiv.org 全量，<实际分类列表>）
+feed 日期: Fri, 21 Aug 2026 —— 即今日，arxiv 已滚动
+抓取 491 条 → 剔除 replace 后当日新公告 323 篇 → 命中五个关注方向 74 篇，另有相关系统方向 16 篇
+
+## 一、大语言模型基模（41 篇）
+
+---
+### 1. Paper Title
+- 作者: Author1, Author2, Author3 等
+- 摘要: 2-3 句中文摘要
+- 链接: https://arxiv.org/abs/xxxx.xxxxx
+```
+
+- 五个方向各一节 `## 一、…` ~ `## 五、…`，之后是 `## 相关系统方向（非面向 LLM）（N 篇）`
+- 某方向 0 篇也要留小节，正文一句话说明为什么空、以及边界上的几篇归到哪去了
+- **每篇 5 个块**，一次 `append_markdown` 不超过 17 篇，按小节切开多次追加
+- 篇数多，别把「终端输出」和「写 Notion」做成两遍摘要——用同一份文本

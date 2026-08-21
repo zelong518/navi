@@ -39,11 +39,11 @@ for d in /path/to/navi/.claude/skills/navi*; do ln -sfn "$d" ~/.claude/skills/; 
 | 命令 | 说明 |
 |------|------|
 | **`/navi <一句需求>`** | **统一入口**，把自然语言需求路由到下面的具体能力（认不出意图会列清单让你选）|
-| `/navi-arxiv` | 按你的关注方向筛今日 arxiv（默认五类：基模 / 训练系统 / 推理系统 / 可靠性与故障观测 / 安全；方向定义在 `$NAVI_HOME/arxiv-directions.md`）|
+| `/navi-arxiv` | 按你的关注方向筛今日 arxiv（默认五类：基模 / 训练系统 / 推理系统 / 可靠性与故障观测 / 安全；方向定义在 `$NAVI_HOME/arxiv-directions.md`）；结果按日期归档到 Notion |
 | `/navi-paper sync\|ask\|status` | Zotero 论文库同步 + PaperQA2 语义问答（带引用）|
 | `/navi-github [language]` | GitHub 每日热门仓库，支持按语言筛选 |
-| `/navi-zhihu hot\|topic\|all` | 知乎热榜，或按话题抓相关内容（话题清单在 `$NAVI_HOME/zhihu-topics.md`）|
-| `/navi-hfpapers` | Hugging Face Daily Papers 今日热门论文 |
+| `/navi-zhihu hot\|topic\|all` | 知乎热榜，或按话题抓相关内容（话题清单在 `$NAVI_HOME/zhihu-topics.md`）；`hot` 结果按日期归档到 Notion |
+| `/navi-hfpapers` | Hugging Face Daily Papers 今日热门论文；结果按日期归档到 Notion |
 | `/navi-hackernews` | Hacker News 当前热门帖子 |
 | `/navi-producthunt` | Product Hunt 今日热门产品 |
 | `/navi-brief` | 每日简报，聚合以上所有信息源；可选一并推送飞书群（无参数时弹窗询问）|
@@ -149,6 +149,34 @@ python3 .claude/skills/navi-paper/paper.py status           # 查看 cache / 索
 **arxiv 抓取分类**另由 `[arxiv].categories` 配置（列表或 `+` 连接的字符串），
 默认已含 `cs.SE` / `cs.PF` / `cs.AR`——为「推理系统」和「可靠性与故障观测」两个方向补的，
 实测只多约 30 条（597 → 627），交叉挂靠重叠大，代价可忽略。
+
+## 抓取结果落 Notion（按日期归档）
+
+`navi-arxiv` / `navi-hfpapers` / `navi-zhihu` 抓完**除了终端输出，还会把结果写进 Notion**，
+一天一个日期页，日期页下每个信息源一个子页：
+
+```
+Daily Info / 2026-0821 / {arxiv, hfpaper, zhihu}
+```
+
+三个 skill 共用**一份**规则 `.claude/skills/navi-notion/SINK.md`（沿用 `navi-swanlab`
+那种「无 SKILL.md 的共享资产包」形态，改流程只改这一处）；各 skill 的 SKILL.md 里只留
+自己那一页的**版式**，因为三页排版本来就不同（arxiv 是 `### N. 标题` + 三个 bullet，
+hfpaper 是 `**作者**：`/`**摘要**：`/`**链接**：`，zhihu 是一行一条的编号列表）。
+
+页面 ID 属于「具体」，只放本地：`$NAVI_HOME/notion-pages.md`（模板
+`navi-notion/notion-pages.example.md`），里面给 `daily_root` 与「skill → 子页名」映射。
+**缺这个文件或 Notion MCP 没接，就跳过写入、只在终端输出并说明原因**，不猜页面 ID。
+
+两条踩过的坑写进了规范：
+
+| 坑 | 规则 |
+|----|------|
+| 往昨天的日期页追加 | **只允许写今天**（`date -u +%Y-%m%d` 现取，不用上下文里的日期）。写错日期页等于给历史那天凭空加一段 |
+| 一次 `append_markdown` 超 100 块会**静默写丢** | 按小节切开多次追加，每次 ≤90 块（arxiv 每篇 5 块 → ≤17 篇，hfpaper 每篇 4 块 → ≤22 篇）|
+
+同一天重跑是**追加**（前面加 `---` 分隔），不删已有内容——要不要清理由用户决定。
+`navi-brief` 并行调这几个 skill，因此简报跑一次这几页也就都归档了。
 
 **知乎话题为什么走 WebSearch**：知乎官方搜索与话题接口都要登录（实测
 `search_v3` → `40353 need_login`，`topics/<id>/feeds` → `10003` 要客户端签名），
