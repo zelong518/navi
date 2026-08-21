@@ -17,6 +17,10 @@ allowed-tools: Bash, Read
   `gmt_running_time` / `username`），列表**无需逐个 `GetJob`**；只有 `logs` 才按 pod 取。
 - **默认聚焦**：`list` 默认只列 `Running` 且过滤掉 GPU=0 的辅助任务。
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 文件
 
 - `dlc.py` — CLI 入口（`list` / `logs` / `workspaces`）
@@ -31,22 +35,22 @@ pip install alibabacloud_pai_dlc20201203 alibabacloud_aiworkspace20210204 alibab
 
 ```bash
 # 全部 Running 任务（遍历所有可访问工作空间；含 GPU / 时长 / 属主 + 合计卡数）
-python3 .claude/skills/navi-dlc/dlc.py list
+python3 "$S/dlc.py" list
 
-python3 .claude/skills/navi-dlc/dlc.py list --all-status         # 不限状态
-python3 .claude/skills/navi-dlc/dlc.py list --status Failed      # 指定状态
-python3 .claude/skills/navi-dlc/dlc.py list --mine               # 只看自己提交的
-python3 .claude/skills/navi-dlc/dlc.py list --workspace 600283   # 只查某工作空间
-python3 .claude/skills/navi-dlc/dlc.py list --with-zero-gpu      # 保留 GPU=0 的任务
-python3 .claude/skills/navi-dlc/dlc.py list --days 30            # 只看最近 N 天创建的
-python3 .claude/skills/navi-dlc/dlc.py --json list              # JSON 输出（便于程序解析）
+python3 "$S/dlc.py" list --all-status         # 不限状态
+python3 "$S/dlc.py" list --status Failed      # 指定状态
+python3 "$S/dlc.py" list --mine               # 只看自己提交的
+python3 "$S/dlc.py" list --workspace 600283   # 只查某工作空间
+python3 "$S/dlc.py" list --with-zero-gpu      # 保留 GPU=0 的任务
+python3 "$S/dlc.py" list --days 30            # 只看最近 N 天创建的
+python3 "$S/dlc.py" --json list              # JSON 输出（便于程序解析）
 
 # 某任务最后一个节点（worker 序号最大者）的日志尾部
-python3 .claude/skills/navi-dlc/dlc.py logs <jobid> --lines 50
-python3 .claude/skills/navi-dlc/dlc.py logs <jobid> --pod worker-3   # 指定 pod
+python3 "$S/dlc.py" logs <jobid> --lines 50
+python3 "$S/dlc.py" logs <jobid> --pod worker-3   # 指定 pod
 
 # 列可访问的工作空间
-python3 .claude/skills/navi-dlc/dlc.py workspaces
+python3 "$S/dlc.py" workspaces
 ```
 
 ## 作为 `/navi-dlc` 被调用时

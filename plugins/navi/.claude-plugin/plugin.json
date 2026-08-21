@@ -1,0 +1,5 @@
+{
+  "name": "navi",
+  "description": "个人助手 skill 集。统一入口 /navi <一句需求> 路由到具体能力；也可直接用 /navi-arxiv、/navi-snapshot 等单独调用。配置目录由 NAVI_HOME 决定（默认 ~/.navi）。",
+  "author": { "name": "zelong518" }
+}

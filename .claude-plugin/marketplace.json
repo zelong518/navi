@@ -1,0 +1,13 @@
+{
+  "name": "navi",
+  "description": "Navi —— 个人助手 skill 集：信息源聚合、训练集群与实验、状态快照、推送出口、投资只读查询，以及性能排障与协作规范两套方法论。",
+  "owner": { "name": "zelong518" },
+  "plugins": [
+    {
+      "name": "navi",
+      "description": "统一入口 /navi <一句需求>，路由到 20 个能力：arxiv/HF/知乎/GitHub/HN/PH 信息源与每日简报、Zotero 论文库问答、DLC 训练任务、SwanLab 实验分析与监控、机器清单、Claude Code 与 Codex 状态快照、配置 WebDAV 备份、飞书/负一屏/Notion 推送、Polymarket 只读查询、性能排障纪律与开发协作规范。",
+      "author": { "name": "zelong518" },
+      "source": "./plugins/navi"
+    }
+  ]
+}

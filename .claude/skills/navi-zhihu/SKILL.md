@@ -1,26 +1,46 @@
 ---
 name: navi-zhihu
-description: 获取知乎当前热榜话题
-argument-hint: "[条数=10] [关键词…]"
+description: 知乎内容抓取——`hot` 取当前热榜（可按条数/关键词过滤），`topic` 抓某个话题相关的内容（知乎官方搜索接口需登录，故走 WebSearch 限定 zhihu.com），省略关键词时读 $NAVI_HOME/zhihu-topics.md 里的常关注话题清单。
+argument-hint: "hot [条数=10] [关键词…] | topic [关键词…=常关注话题] | all"
 user-invocable: true
-allowed-tools: WebFetch
+allowed-tools: WebFetch, WebSearch, Bash, Read, mcp__notion__get_page, mcp__notion__create_page, mcp__notion__append_markdown
 ---
 
 # 知乎热榜
 
 ## 参数
 
-`$ARGUMENTS` 可选：
+`$ARGUMENTS` 第一个词是子命令，缺省按 `hot` 处理：
 
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| 条数（纯数字） | `10` | 输出前 N 条；给 `all` / `全部` 则不截断 |
+| 子命令 | 默认 | 说明 |
+|--------|------|------|
+| `hot [条数] [关键词…]` | 条数 10 | **热榜**。纯数字为条数（`all`/`全部` 不截断）；其余词按关键词过滤标题 |
+| `topic [关键词…]` | 读常关注话题 | **话题相关内容**。省略关键词时读 `$NAVI_HOME/zhihu-topics.md` 里的清单逐个搜 |
+| `all` | — | 热榜 + 全部常关注话题 |
 
-其余词按关键词过滤标题（大小写不敏感），给了就只留命中的条目；一条都不命中时如实说明，不要放宽条件硬凑。
+一条都没命中时如实说明，**不要放宽条件硬凑**。
+
+## topic 怎么抓（重要）
+
+**知乎官方的搜索与话题接口都要登录**，实测：
+`api.zhihu.com/search_v3` 返回 `40353 need_login`，`api/v4/topics/<id>/feeds` 返回
+`10003 请求参数异常`（要客户端签名）。只有 `/topstory/hot-list` 可无鉴权访问。
+
+所以 `topic` 走 **WebSearch 限定域名**，不碰知乎鉴权：
+
+```
+WebSearch(query="<话题关键词>", allowed_domains=["zhihu.com"])
+```
+
+- 关键词省略时：`Read` 读 `$NAVI_HOME/zhihu-topics.md`（不存在则回退同目录
+  `zhihu-topics.example.md`），**每个话题一次 WebSearch**，可在一条消息里并发多个
+- 命中的多是**专栏文章**（`zhuanlan.zhihu.com/p/...`）而非问答；这是搜索引擎索引的结果，
+  **不是实时热度排序**，输出时要讲清这一点，别把它当成"话题热榜"
+- 想看某篇的实际内容用 `WebFetch` 取该 URL，不要凭标题编摘要
 
 ## 任务
 
-获取知乎当前热榜话题并以表格形式呈现给用户。
+按子命令获取知乎内容并呈现给用户：`hot` 走下面的热榜接口，`topic` 走上面的 WebSearch 路径。
 
 ## 数据获取
 
@@ -34,6 +54,7 @@ https://api.zhihu.com/topstory/hot-list?limit=50
 - `title` — 问题标题
 - `url` — 问题链接（知乎问题页 URL，格式如 `https://www.zhihu.com/question/{id}`）
 - `detail_text` — 热度描述（如 "xxx 万热度"）
+- `answer_count` / `follower_count` — 回答数 / 关注数（写 Notion 用）
 
 ## 输出格式
 
@@ -54,3 +75,38 @@ https://api.zhihu.com/topstory/hot-list?limit=50
 - **链接**：格式为 `https://zhihu.com/question/xxx`，不加 `www.`
 - 列出所有热榜条目（通常 30 条），不要截断
 - 用中文输出
+
+## topic 的输出格式
+
+```
+## 知乎话题 — <关键词>
+（来源：搜索引擎索引的 zhihu.com 内容，非实时热度排序）
+
+────────────────────────────────────────
+  标题: 文章标题
+  类型: 专栏 / 问答
+  要点: 1-2 句中文要点（读过正文才写，否则只给标题）
+  链接: https://zhuanlan.zhihu.com/p/xxx
+```
+
+多个话题时按话题分节。每个话题下没结果就写「无命中」，不要用相邻话题的结果充数。
+
+## 写入 Notion（hot 抓完必做）
+
+抓完热榜**除了终端输出，还要按日期归档到 Notion**。流程与页面树见共享规范
+`$S/../navi-notion/SINK.md`（`$S` 为本 skill 的 base directory；软链装法下等价于
+`~/.claude/skills/navi-notion/SINK.md`），先读它再动手。`topic` 子命令不写（搜索索引结果
+不是当日快照，没有归档价值）。
+
+**Notion 版式**（子页名 `zhihu`，与 08-19 那页保持一致，别改）：
+
+```
+抓取时间 2026-08-21 05:50 UTC · 共 30 条 · 来源 api.zhihu.com/topstory/hot-list
+
+1. [问题标题](https://zhihu.com/question/xxx) — 🔥 618 万热度 · 178 答 · 294 关注
+1. [问题标题](https://zhihu.com/question/xxx) — 🔥 524 万热度 · 769 答 · 19328 关注
+```
+
+- 每行都写 `1.`，Notion 自己排序号
+- 写**全部 30 条**，不受 `hot [条数]` 参数影响——终端可以只给 10 条，归档必须完整
+- 加了关键词过滤时，Notion 里仍写完整热榜，并在抬头补一句「本次终端按关键词 xxx 过滤」

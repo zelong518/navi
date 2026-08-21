@@ -15,6 +15,10 @@ allowed-tools: Bash, Read
 - **取数自包**：`zotero_sync.py` 纯 stdlib 直接走 Zotero API + WebDAV，带 md5 去重，不依赖其它脚本。
 - **核心交给 PaperQA2**：解析/切块/向量/检索/引用全由它负责；本目录只做取数 + 编排 CLI。
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 文件
 
 - `paper.py` — CLI 入口（`sync` / `ask` / `status`）
@@ -29,14 +33,14 @@ allowed-tools: Bash, Read
 pip install -r .claude/skills/navi-paper/requirements.txt
 
 # 同步 Zotero 新论文并建/更新索引（增量；--full 全量重扫+重建，--limit N 调试）
-python3 .claude/skills/navi-paper/paper.py sync
+python3 "$S/paper.py" sync
 
 # 问答：带问题=单次；省略=进交互式 REPL
-python3 .claude/skills/navi-paper/paper.py ask "我的库里关于 MoE 路由有哪些工作?"
-python3 .claude/skills/navi-paper/paper.py ask
+python3 "$S/paper.py" ask "我的库里关于 MoE 路由有哪些工作?"
+python3 "$S/paper.py" ask
 
 # 查看缓存/索引状态
-python3 .claude/skills/navi-paper/paper.py status
+python3 "$S/paper.py" status
 ```
 
 ## 作为 `/navi-paper` 被调用时

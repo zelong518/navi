@@ -14,6 +14,10 @@ allowed-tools: Bash, Read, Write
 - `/navi-hiboard 「内容」` —— 把参数里的内容**原样当正文推送**，不要自行总结会话或改写。
 - 用户说「推送到负一屏」「发到手机」「把这个结果推过去」等。
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 前置配置
 
 `~/.navi/config.toml` 加 `[hiboard]` 段：
@@ -42,17 +46,17 @@ cat > /tmp/task.json <<'EOF'
 EOF
 
 # 2. 推送
-python3 .claude/skills/navi-hiboard/push.py --data /tmp/task.json
+python3 "$S/push.py" --data /tmp/task.json
 
 # 先看 payload 不实际发送
-python3 .claude/skills/navi-hiboard/push.py --data /tmp/task.json --dry-run
+python3 "$S/push.py" --data /tmp/task.json --dry-run
 ```
 
 也可不建文件、直接从别处拿正文：
 
 ```bash
-python3 .claude/skills/navi-hiboard/push.py --name "简报" --content report.md
-echo "# 正文" | python3 .claude/skills/navi-hiboard/push.py --name "简报" --content -
+python3 "$S/push.py" --name "简报" --content report.md
+echo "# 正文" | python3 "$S/push.py" --name "简报" --content -
 ```
 
 ## JSON 字段

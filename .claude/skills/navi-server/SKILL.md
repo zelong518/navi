@@ -14,6 +14,10 @@ allowed-tools: Bash, Read, AskUserQuestion
 - **最小职责**：所有读写走唯一脚本 `.claude/skills/navi-server/tools/server_config.py`（只增删查 `[servers.*]`，不做连接测试），本 skill 只负责**收集信息 + 编排**。
 - **绝不重写整个配置**：脚本对其它段（`[github]`/`[swanlab]`/`[siyuan]`）做文本级保护，原样不动。
 
+> **脚本路径约定**：下面的 `$S` 指**本 skill 的 base directory**（调用时会给出绝对路径）。
+> 先 `S="<base directory>"` 再拼命令，**不要**用相对 cwd 的 `.claude/skills/...`——
+> navi 的 skill 可以在任何仓库里被调用，那时 cwd 不是 navi 仓库根。
+
 ## 子命令
 
 `$ARGUMENTS` 第一个词是子命令，缺省按 `add` 处理：
@@ -39,7 +43,7 @@ allowed-tools: Bash, Read, AskUserQuestion
 收齐后调用脚本（密码用单引号包好，避免 shell 转义问题）：
 
 ```bash
-python3 .claude/skills/navi-server/tools/server_config.py add \
+python3 "$S/tools/server_config.py" add \
   --name gpu01 --host 1.2.3.4 --user root --port 22 \
   --auth key --key-path ~/.ssh/id_rsa
 ```
@@ -47,7 +51,7 @@ python3 .claude/skills/navi-server/tools/server_config.py add \
 密码方式：
 
 ```bash
-python3 .claude/skills/navi-server/tools/server_config.py add \
+python3 "$S/tools/server_config.py" add \
   --name gpu02 --host 5.6.7.8 --user ubuntu \
   --auth password --password 'the-secret'
 ```
@@ -57,7 +61,7 @@ python3 .claude/skills/navi-server/tools/server_config.py add \
 ## list 流程
 
 ```bash
-python3 .claude/skills/navi-server/tools/server_config.py list
+python3 "$S/tools/server_config.py" list
 ```
 
 把 JSON 整理成中文表格（名字 / host / user / 端口 / 登录方式），密码列只显示 `***`。
@@ -67,7 +71,7 @@ python3 .claude/skills/navi-server/tools/server_config.py list
 从 `$ARGUMENTS` 取 `<name>`；没给就先 `list` 让用户挑。删除前**确认一次**，再执行：
 
 ```bash
-python3 .claude/skills/navi-server/tools/server_config.py remove --name gpu01
+python3 "$S/tools/server_config.py" remove --name gpu01
 ```
 
 ## 输出规范
